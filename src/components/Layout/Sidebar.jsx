@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { FaHome, FaUsers, FaBook, FaBars, FaTimes } from 'react-icons/fa';
+import { FaHome, FaUsers, FaBook,  FaTimes } from 'react-icons/fa';
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -18,12 +18,12 @@ const Sidebar = () => {
   return (
     <>
       {/* Mobile Header */}
-      <div className="lg:hidden flex justify-between p-4 bg-white border-b">
+      {/* <div className="lg:hidden flex justify-between p-4 bg-white border-b">
         <h1>UniGuide</h1>
         <button onClick={() => setOpen(true)}>
           <FaBars />
         </button>
-      </div>
+      </div> */}
 
       {/* Overlay */}
       {open && (
