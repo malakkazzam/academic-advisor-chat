@@ -8,6 +8,7 @@ import ProtectedRoute from './components/Common/ProtectedRoute';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import AIChatAssistant from './components/Chat/AIChatAssistant';
+import Layout from "./layout/Layout";
 import AdminDashboard from './components/Admin/AdminDashboard';
 import StudentsList from './components/Advisor/StudentsList';
 import StudentChatView from './components/Advisor/StudentChatView';
@@ -41,7 +42,7 @@ const AppContent = () => {
       <div className="flex">
         {showMainSidebar && <Sidebar />}
 
-        <main className={`flex-1 ${showMainSidebar ? 'p-6' : ''}`}>
+        <main className={`flex-1 ${showMainSidebar ? "p-6" : ""}`}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
@@ -51,9 +52,9 @@ const AppContent = () => {
               path="/"
               element={
                 <ProtectedRoute>
-                  {role === 'admin' ? (
+                  {role === "admin" ? (
                     <Navigate to="/admin" replace />
-                  ) : role === 'advisor' ? (
+                  ) : role === "advisor" ? (
                     <Navigate to="/advisor" replace />
                   ) : (
                     <Navigate to="/chat" replace />
@@ -66,7 +67,7 @@ const AppContent = () => {
             <Route
               path="/chat"
               element={
-                <ProtectedRoute allowedRoles={['student']}>
+                <ProtectedRoute allowedRoles={["student"]}>
                   <AIChatAssistant />
                 </ProtectedRoute>
               }
@@ -83,10 +84,12 @@ const AppContent = () => {
 
             {/* admin */}
             <Route
-              path="/admin/*"
+              path="/admin"
               element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <AdminDashboard />
+                <ProtectedRoute>
+                  <Layout>
+                    <AdminDashboard />
+                  </Layout>
                 </ProtectedRoute>
               }
             />
@@ -95,7 +98,7 @@ const AppContent = () => {
             <Route
               path="/advisor"
               element={
-                <ProtectedRoute allowedRoles={['advisor']}>
+                <ProtectedRoute allowedRoles={["advisor"]}>
                   <StudentsList />
                 </ProtectedRoute>
               }
@@ -104,7 +107,7 @@ const AppContent = () => {
             <Route
               path="/advisor/chat/:studentId"
               element={
-                <ProtectedRoute allowedRoles={['advisor']}>
+                <ProtectedRoute allowedRoles={["advisor"]}>
                   <StudentChatView />
                 </ProtectedRoute>
               }
@@ -113,7 +116,7 @@ const AppContent = () => {
             <Route
               path="/advisor/analytics"
               element={
-                <ProtectedRoute allowedRoles={['advisor']}>
+                <ProtectedRoute allowedRoles={["advisor"]}>
                   <AdvisorAnalytics />
                 </ProtectedRoute>
               }
