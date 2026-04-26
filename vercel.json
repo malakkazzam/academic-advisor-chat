@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "http://siraj.runasp.net/api/$1"
+    }
+  ]
+}
