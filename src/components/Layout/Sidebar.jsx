@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { FaHome, FaUsers, FaBook,  FaTimes } from 'react-icons/fa';
+import { FaHome, FaUsers, FaBook, FaBars, FaTimes } from 'react-icons/fa';
 
 const Sidebar = () => {
   const { user } = useAuth();
@@ -17,45 +17,64 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Mobile Header */}
-      {/* <div className="lg:hidden flex justify-between p-4 bg-white border-b">
-        <h1>UniGuide</h1>
+      {/* ✅ Mobile Top Bar */}
+      <div className="lg:hidden flex justify-between items-center p-4 bg-white border-b shadow-sm">
+        <h1 className="font-bold text-lg">UniGuide</h1>
         <button onClick={() => setOpen(true)}>
-          <FaBars />
+          <FaBars className="text-xl" />
         </button>
-      </div> */}
+      </div>
 
-      {/* Overlay */}
+      {/* ✅ Overlay */}
       {open && (
         <div
-          className="fixed inset-0 bg-black/40 z-40"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
           onClick={() => setOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed top-0 left-0 w-64 h-full bg-white z-50 transform transition ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}>
-        
-        <div className="flex justify-between p-4 border-b lg:hidden">
-          <h2>Menu</h2>
+      {/* ✅ Sidebar */}
+      <aside
+        className={`
+          fixed top-0 left-0 z-50 h-full w-64 bg-white shadow-lg
+          transform transition-transform duration-300
+          ${open ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0
+        `}
+      >
+        {/* Mobile Close Button */}
+        <div className="flex justify-between items-center p-4 border-b lg:hidden">
+          <h2 className="font-semibold">Menu</h2>
           <button onClick={() => setOpen(false)}>
-            <FaTimes />
+            <FaTimes className="text-xl" />
           </button>
         </div>
 
+        {/* Desktop Logo */}
+        <div className="hidden lg:block px-6 py-6 text-2xl font-bold border-b">
+          UniGuide
+        </div>
+
+        {/* Menu */}
         <nav className="mt-4">
-          {menuItems.map(item => (
+          {menuItems.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
-              className="block px-6 py-3 hover:bg-gray-100"
               onClick={() => setOpen(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-6 py-3 transition ${
+                  isActive
+                    ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`
+              }
             >
-              {item.label}
+              <item.icon size={18} />
+              <span>{item.label}</span>
             </NavLink>
           ))}
         </nav>
-
       </aside>
     </>
   );
