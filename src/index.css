@@ -88,35 +88,3 @@ textarea {
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
 }
 
-
-
-@layer base {
-  body {
-    @apply bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 min-h-screen;
-  }
-}
-
-@layer components {
-  .btn-primary {
-    @apply bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-2.5 rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-md hover:shadow-lg font-medium text-sm sm:text-base;
-  }
-  
-  .btn-secondary {
-    @apply bg-gray-100 text-gray-700 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg hover:bg-gray-200 transition-colors text-xs sm:text-sm;
-  }
-  
-  .input-field {
-    @apply w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 bg-white/50 backdrop-blur-sm text-sm sm:text-base;
-  }
-  
-  .card {
-    @apply bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl;
-  }
-}
-
-/* Responsive utilities */
-@media (max-width: 640px) {
-  .container {
-    @apply px-4;
-  }
-}
