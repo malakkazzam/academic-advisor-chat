@@ -5,7 +5,7 @@
       "destination": "http://siraj.runasp.net/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ]
