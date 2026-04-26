@@ -3,10 +3,6 @@
     {
       "source": "/api/(.*)",
       "destination": "http://siraj.runasp.net/api/$1"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/index.html"
     }
   ]
 }
