@@ -22,7 +22,7 @@ const AIChatAssistant = () => {
     {
       id: 'welcome-1',
       role: 'assistant',
-      content: "*Welcome to AI Academic Assistant!*\n\nI'm here to help you with:\n• 📚 Course selection and recommendations\n• 📅 Registration deadlines and procedures\n• 📋 Academic policies and regulations\n• 💡 Study tips and success strategies\n• 🎯 Career guidance and internships\n\n**How can I help you today?**",
+      content: "🤖 **Welcome to AI Academic Assistant!**\n\nI'm here to help you with:\n• 📚 Course selection and recommendations\n• 📅 Registration deadlines and procedures\n• 📋 Academic policies and regulations\n• 💡 Study tips and success strategies\n• 🎯 Career guidance and internships\n\n**How can I help you today?**",
       timestamp: new Date(),
       feedback: null
     }
@@ -107,11 +107,9 @@ const AIChatAssistant = () => {
 
     let messageContent = inputMessage;
     
-    // If there's an audio message, add it to the content
     if (audioMessage) {
       messageContent = inputMessage || "[Voice message]";
       console.log('Sending with audio:', audioMessage);
-      // Here you can process the audio blob
       setAudioMessage(null);
     }
     
@@ -156,7 +154,6 @@ const AIChatAssistant = () => {
       
       setMessages(prev => [...prev, aiMessage]);
       
-      // Refresh conversations list after sending message
       const convResponse = await chatAPI.getConversations();
       const formattedConversations = (convResponse.data || []).map(conv => ({
         id: conv.id,
@@ -167,16 +164,10 @@ const AIChatAssistant = () => {
       }));
       setConversations(formattedConversations);
       
-    } catch (error) {
-      console.error('Error sending message:', error);
+    } catch {
+      console.error('Error sending message');
       
       let errorText = "⚠️ **Connection error occurred.**\n\nPlease try again.";
-      
-      if (error.response?.status === 401) {
-        errorText = "🔐 **Session expired.** Please refresh the page and login again.";
-      } else if (error.response?.status === 404) {
-        errorText = "🚀 **AI service is being set up.** Coming soon!";
-      }
       
       const errorMessage = {
         id: generateId(),
@@ -267,8 +258,7 @@ const AIChatAssistant = () => {
         }
         
         toast.success('Conversation deleted');
-      } catch (error) {
-        console.error('Failed to delete conversation:', error);
+      } catch {
         toast.error('Failed to delete conversation');
       }
     }
@@ -318,12 +308,12 @@ const AIChatAssistant = () => {
   ];
 
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
+    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
       
-      {/* Chat History Sidebar */}
+      {/* Chat History Sidebar - Responsive */}
       <div className={`
         ${showHistory ? 'w-80' : 'w-0'} 
-        lg:w-80
+        fixed lg:relative
         bg-white 
         border-r border-gray-200 
         flex-shrink-0 
@@ -331,14 +321,14 @@ const AIChatAssistant = () => {
         overflow-hidden 
         flex flex-col
         shadow-xl
-        z-20
+        z-30
+        h-full
       `}>
-        {/* Header */}
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FaHistory className="text-indigo-500" />
-              <h2 className="font-semibold text-gray-800">Chat History</h2>
+              <FaHistory className="text-indigo-500 text-sm sm:text-base" />
+              <h2 className="font-semibold text-gray-800 text-sm sm:text-base">Chat History</h2>
             </div>
             <button
               onClick={() => setShowHistory(false)}
@@ -349,8 +339,7 @@ const AIChatAssistant = () => {
           </div>
         </div>
         
-        {/* List of conversations */}
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-2 sm:p-3">
           {isLoadingHistory && conversations.length === 0 ? (
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-500"></div>
@@ -358,7 +347,7 @@ const AIChatAssistant = () => {
           ) : conversations.length === 0 ? (
             <div className="text-center py-8 text-gray-400">
               <FaHistory className="mx-auto text-3xl mb-2 opacity-30" />
-              <p className="text-sm">No conversations yet</p>
+              <p className="text-xs sm:text-sm">No conversations yet</p>
               <p className="text-xs mt-1">Start a new chat!</p>
             </div>
           ) : (
@@ -366,75 +355,81 @@ const AIChatAssistant = () => {
               <div
                 key={conv.id}
                 onClick={() => loadConversation(conv)}
-                className={`group relative p-3 mb-2 rounded-xl transition-all duration-200 cursor-pointer ${
+                className={`group relative p-2 sm:p-3 mb-2 rounded-xl transition-all duration-200 cursor-pointer ${
                   activeConversation === conv.id
                     ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm'
                     : 'hover:bg-gray-50 border border-transparent'
                 }`}
               >
                 <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-medium text-gray-800 text-sm truncate flex-1">
+                  <h3 className="font-medium text-gray-800 text-xs sm:text-sm truncate flex-1">
                     {conv.title}
                   </h3>
-                  <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                  <span className="text-[10px] sm:text-xs text-gray-400 ml-2 flex-shrink-0">
                     {formatDate(conv.date)}
                   </span>
                 </div>
-                <p className="text-xs text-gray-500 truncate">{conv.preview}</p>
-                <p className="text-xs text-gray-400 mt-1 truncate">{conv.lastMessage}</p>
+                <p className="text-[10px] sm:text-xs text-gray-500 truncate">{conv.preview}</p>
+                <p className="text-[10px] sm:text-xs text-gray-400 mt-1 truncate">{conv.lastMessage}</p>
                 
                 <button
                   onClick={(e) => deleteConversation(conv.id, e)}
                   className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-500 rounded-lg"
                   title="Delete conversation"
                 >
-                  <FaTrash size={12} />
+                  <FaTrash size={10} className="sm:w-3 sm:h-3" />
                 </button>
               </div>
             ))
           )}
         </div>
         
-        {/* Footer */}
         <div className="p-3 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-400">
+          <p className="text-[10px] sm:text-xs text-gray-400">
             {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
           </p>
         </div>
       </div>
 
+      {/* Background overlay for mobile */}
+      {showHistory && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          onClick={() => setShowHistory(false)}
+        />
+      )}
+
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-white">
         
-        {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0 shadow-md">
-          <div className="flex items-center gap-3">
-            {/* Button to show chat history */}
+        {/* Header - Responsive */}
+        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-3 sm:px-5 py-3 sm:py-4 flex items-center justify-between flex-shrink-0 shadow-md">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setShowHistory(!showHistory)}
-              className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200 text-white"
+              className="p-1.5 sm:p-2 hover:bg-white/20 rounded-xl transition-all duration-200 text-white"
               title="Chat History"
             >
-              <FaHistory size={18} />
+              <FaHistory size={16} className="sm:w-5 sm:h-5" />
             </button>
             
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
-              <FaRobot className="text-white text-xl" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+              <FaRobot className="text-white text-base sm:text-xl" />
             </div>
             
             <div>
-              <h1 className="font-bold text-white text-lg sm:text-xl tracking-tight">
+              <h1 className="font-bold text-white text-sm sm:text-lg md:text-xl tracking-tight">
                 AI Academic Advisor
               </h1>
-              <p className="text-xs flex items-center gap-1 text-white/80">
+              <p className="text-[10px] sm:text-xs flex items-center gap-1 text-white/80">
                 {isConnected ? (
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                    Online • Ready to assist
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-400 rounded-full animate-pulse"></span>
+                    Online • Ready
                   </span>
                 ) : (
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-yellow-400 rounded-full animate-pulse"></span>
                     Connecting...
                   </span>
                 )}
@@ -444,79 +439,78 @@ const AIChatAssistant = () => {
           
           <button
             onClick={clearChat}
-            className="p-2 text-white/70 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200"
+            className="p-1.5 sm:p-2 text-white/70 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200"
             title="New chat"
           >
-            <FaTrash size={18} />
+            <FaTrash size={14} className="sm:w-4 sm:h-4" />
           </button>
         </div>
 
-        {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white">
+        {/* Messages Area - Responsive */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 space-y-3 sm:space-y-4 bg-gradient-to-b from-gray-50 to-white">
           {messages.map((message) => (
             <div
               key={message.id}
               className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
             >
-              <div className={`flex gap-3 max-w-[90%] sm:max-w-[80%] lg:max-w-[70%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+              <div className={`flex gap-2 sm:gap-3 max-w-[85%] sm:max-w-[75%] md:max-w-[70%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 
                 {/* Avatar */}
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
+                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
                   message.role === 'user' 
                     ? 'bg-gradient-to-br from-emerald-500 to-teal-600' 
                     : 'bg-gradient-to-br from-blue-500 to-indigo-600'
                 }`}>
                   {message.role === 'user' ? (
-                    <FaUser size={14} className="text-white" />
+                    <FaUser size={10} className="text-white sm:w-3.5 sm:h-3.5" />
                   ) : (
-                    <FaRobot size={14} className="text-white" />
+                    <FaRobot size={10} className="text-white sm:w-3.5 sm:h-3.5" />
                   )}
                 </div>
                 
                 {/* Message Bubble */}
                 <div className="group relative">
-                  <div className={`rounded-2xl px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md ${
+                  <div className={`rounded-2xl px-3 py-2 sm:px-4 sm:py-3 shadow-sm transition-all duration-200 hover:shadow-md ${
                     message.role === 'user'
                       ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
                       : 'bg-white border border-gray-200/50 text-gray-800'
                   }`}>
-                    <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
+                    <div className="text-xs sm:text-sm md:text-base whitespace-pre-wrap leading-relaxed break-words">
                       {message.content}
                     </div>
-                    <div className={`text-[10px] sm:text-xs mt-2 flex items-center gap-2 ${
+                    <div className={`text-[9px] sm:text-[10px] md:text-xs mt-1 sm:mt-2 flex items-center gap-2 ${
                       message.role === 'user' ? 'text-emerald-100' : 'text-gray-400'
                     }`}>
                       <span>{formatTime(message.timestamp)}</span>
                     </div>
                   </div>
                   
-                  {/* Action Buttons for AI messages */}
                   {message.role === 'assistant' && (
-                    <div className="absolute -bottom-7 right-0 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-1 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm">
+                    <div className="absolute -bottom-5 sm:-bottom-7 right-0 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-0.5 sm:gap-1 bg-white/90 backdrop-blur-sm rounded-lg p-0.5 sm:p-1 shadow-sm">
                       <button
                         onClick={() => copyMessage(message.content)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-500 transition-colors rounded-lg"
+                        className="p-1 sm:p-1.5 text-gray-400 hover:text-indigo-500 transition-colors rounded-lg"
                         title="Copy"
                       >
-                        <FaRegCopy size={11} />
+                        <FaRegCopy size={9} className="sm:w-2.5 sm:h-2.5" />
                       </button>
                       <button
                         onClick={() => giveFeedback(message.id, 'like')}
-                        className={`p-1.5 transition-colors rounded-lg ${
+                        className={`p-1 sm:p-1.5 transition-colors rounded-lg ${
                           message.feedback === 'like' ? 'text-emerald-500 bg-emerald-50' : 'text-gray-400 hover:text-emerald-500'
                         }`}
                         title="Helpful"
                       >
-                        <FaThumbsUp size={11} />
+                        <FaThumbsUp size={9} className="sm:w-2.5 sm:h-2.5" />
                       </button>
                       <button
                         onClick={() => giveFeedback(message.id, 'dislike')}
-                        className={`p-1.5 transition-colors rounded-lg ${
+                        className={`p-1 sm:p-1.5 transition-colors rounded-lg ${
                           message.feedback === 'dislike' ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-500'
                         }`}
                         title="Not helpful"
                       >
-                        <FaThumbsDown size={11} />
+                        <FaThumbsDown size={9} className="sm:w-2.5 sm:h-2.5" />
                       </button>
                     </div>
                   )}
@@ -525,18 +519,17 @@ const AIChatAssistant = () => {
             </div>
           ))}
           
-          {/* Typing Indicator */}
           {isTyping && (
             <div className="flex justify-start animate-fade-in">
-              <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                  <FaRobot size={14} className="text-white" />
+              <div className="flex gap-2 sm:gap-3">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
+                  <FaRobot size={10} className="text-white sm:w-3.5 sm:h-3.5" />
                 </div>
-                <div className="bg-white rounded-2xl px-5 py-3 shadow-sm border border-gray-200/50">
-                  <div className="flex gap-1.5">
-                    <span className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                <div className="bg-white rounded-2xl px-3 py-2 sm:px-5 sm:py-3 shadow-sm border border-gray-200/50">
+                  <div className="flex gap-1">
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                   </div>
                 </div>
               </div>
@@ -546,10 +539,9 @@ const AIChatAssistant = () => {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
-        <div className="p-4 sm:p-5 border-t border-gray-200/50 bg-white/95 backdrop-blur-sm flex-shrink-0">
+        {/* Input Area - Responsive */}
+        <div className="p-3 sm:p-4 md:p-5 border-t border-gray-200/50 bg-white/95 backdrop-blur-sm flex-shrink-0">
           <div className="flex gap-2 items-end">
-            {/* Voice Recorder */}
             <VoiceRecorder onRecordingComplete={handleVoiceRecordingComplete} />
             
             <div className="flex-1 relative">
@@ -558,42 +550,42 @@ const AIChatAssistant = () => {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about courses, registration, or academic guidance..."
-                className="w-full input-field resize-none py-3 px-4 text-sm rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-all duration-200"
+                placeholder="Ask me anything..."
+                className="w-full input-field resize-none py-2 px-3 sm:py-3 sm:px-4 text-xs sm:text-sm rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-all duration-200"
                 rows={window.innerWidth < 640 ? 1 : 2}
                 disabled={isLoading}
-                style={{ minHeight: '48px' }}
+                style={{ minHeight: '40px' }}
               />
               {audioMessage && (
-                <div className="absolute bottom-2 right-2 text-xs text-green-500">
-                  🎤 Voice message ready
+                <div className="absolute bottom-1 right-2 text-[10px] sm:text-xs text-green-500">
+                  🎤 Voice ready
                 </div>
               )}
             </div>
             <button
               onClick={handleSendMessage}
               disabled={(!inputMessage.trim() && !audioMessage) || isLoading}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-5 py-2.5 h-12 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
+              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl flex items-center gap-1 sm:gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
+              style={{ height: '40px' }}
             >
               {isLoading ? (
-                <FaSpinner className="animate-spin" size={16} />
+                <FaSpinner className="animate-spin" size={14} className="sm:w-4 sm:h-4" />
               ) : (
-                <FaPaperPlane size={16} />
+                <FaPaperPlane size={14} className="sm:w-4 sm:h-4" />
               )}
-              <span className="hidden sm:inline font-medium">Send</span>
+              <span className="hidden xs:inline text-xs sm:text-sm font-medium">Send</span>
             </button>
           </div>
           
-          {/* Audio message indicator */}
           {audioMessage && (
-            <div className="mt-2 text-sm text-green-600 bg-green-50 rounded-lg p-2 flex items-center gap-2">
-              <FaMicrophone />
-              <span>Voice message recorded. Click send to share.</span>
+            <div className="mt-2 text-xs sm:text-sm text-green-600 bg-green-50 rounded-lg p-1.5 sm:p-2 flex items-center gap-1 sm:gap-2">
+              <FaMicrophone size={12} className="sm:w-3.5 sm:h-3.5" />
+              <span className="text-[10px] sm:text-xs">Voice message recorded. Click send to share.</span>
             </div>
           )}
           
-          {/* Suggested Questions */}
-          <div className="grid grid-cols-2 gap-2 mt-4">
+          {/* Suggested Questions - Responsive Grid */}
+          <div className="grid grid-cols-2 gap-1.5 sm:gap-2 mt-3 sm:mt-4">
             {suggestedQuestions.map((q, index) => {
               const colors = [
                 'from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100',
@@ -606,15 +598,15 @@ const AIChatAssistant = () => {
                 <button
                   key={index}
                   onClick={() => setInputMessage(q.text)}
-                  className={`text-xs sm:text-sm px-3 py-2 bg-gradient-to-r ${colors[index % colors.length]} rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-sm font-medium truncate`}
+                  className={`text-[10px] sm:text-xs md:text-sm px-2 py-1.5 sm:px-3 sm:py-2 bg-gradient-to-r ${colors[index % colors.length]} rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-sm font-medium truncate`}
                 >
-                  {q.icon} {q.text}
+                  <span className="mr-0.5 sm:mr-1">{q.icon}</span> {q.text}
                 </button>
               );
             })}
           </div>
           
-          <p className="text-center text-xs text-gray-400 mt-4">
+          <p className="text-center text-[9px] sm:text-[10px] md:text-xs text-gray-400 mt-3 sm:mt-4">
              AI Advisor • Available 24/7 • Powered by advanced academic intelligence
           </p>
         </div>

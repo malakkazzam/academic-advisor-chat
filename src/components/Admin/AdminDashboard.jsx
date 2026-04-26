@@ -1,11 +1,13 @@
+// src/components/Admin/AdminDashboard.jsx
 import  { useState, useEffect, useRef } from 'react';
 import { adminAPI } from '../../services/api';
-import { FaUsers,  FaChartLine, FaUserPlus } from 'react-icons/fa';
+import { FaUsers, FaBook, FaChartLine, FaUserPlus, FaBars } from 'react-icons/fa';
 import UsersManagement from './UsersManagement';
 import RegulationsManagement from './RegulationsManagement';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalAdvisors: 0,
@@ -22,13 +24,11 @@ const AdminDashboard = () => {
     };
   }, []);
 
-  // جلب بيانات dashboard
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const response = await adminAPI.getDashboard();
         if (isMounted.current) {
-          console.log('Dashboard data:', response.data);
           setStats(response.data);
         }
       } catch (error) {
@@ -43,98 +43,135 @@ const AdminDashboard = () => {
     fetchDashboardData();
   }, []);
 
-  // دالة تغيير التبويب - تأكد من أنها تعمل
-  const handleTabChange = (tab) => {
-    console.log('Changing tab to:', tab);
-    setActiveTab(tab);
-  };
-
   const statCards = [
-    { title: 'Total Users', value: stats.totalUsers, icon: FaUsers, color: 'bg-blue-500' },
-    { title: 'Advisors', value: stats.totalAdvisors, icon: FaUserPlus, color: 'bg-green-500' },
-    { title: 'Students', value: stats.totalStudents, icon: FaUsers, color: 'bg-purple-500' },
-    { title: 'Conversations', value: stats.totalConversations, icon: FaChartLine, color: 'bg-orange-500' },
+    { title: 'Total Users', value: stats.totalUsers, icon: FaUsers, color: 'from-blue-500 to-blue-600' },
+    { title: 'Advisors', value: stats.totalAdvisors, icon: FaUserPlus, color: 'from-green-500 to-green-600' },
+    { title: 'Students', value: stats.totalStudents, icon: FaUsers, color: 'from-purple-500 to-purple-600' },
+    { title: 'Conversations', value: stats.totalConversations, icon: FaChartLine, color: 'from-orange-500 to-orange-600' },
   ];
 
+  const tabs = [
+    { id: 'overview', label: 'Overview', icon: FaChartLine },
+    { id: 'users', label: 'Users', icon: FaUsers },
+    { id: 'regulations', label: 'Regulations', icon: FaBook },
+  ];
+
+  // ✅ إذا كان في حالة تحميل، أظهر مؤشر التحميل
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Admin Dashboard</h1>
-      
-      {/* Tabs - تأكد من أن onClick يعمل */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-4">
-          <button
-            onClick={() => handleTabChange('overview')}
-            className={`px-4 py-2 font-medium capitalize transition-colors ${
-              activeTab === 'overview'
-                ? 'text-primary-500 border-b-2 border-primary-500'
-                : 'text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300'
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => handleTabChange('users')}
-            className={`px-4 py-2 font-medium capitalize transition-colors ${
-              activeTab === 'users'
-                ? 'text-primary-500 border-b-2 border-primary-500'
-                : 'text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300'
-            }`}
-          >
-            Users Management
-          </button>
-          <button
-            onClick={() => handleTabChange('regulations')}
-            className={`px-4 py-2 font-medium capitalize transition-colors ${
-              activeTab === 'regulations'
-                ? 'text-primary-500 border-b-2 border-primary-500'
-                : 'text-gray-500 hover:text-gray-700 hover:border-b-2 hover:border-gray-300'
-            }`}
-          >
-            Regulations
-          </button>
-        </nav>
+    <div className="min-h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="lg:hidden bg-white border-b border-gray-200 p-4 flex items-center justify-between sticky top-0 z-20">
+        <h1 className="text-lg font-bold text-gray-800">Admin Panel</h1>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-lg hover:bg-gray-100"
+        >
+          <FaBars className="text-gray-600" />
+        </button>
       </div>
 
-      {/* محتوى التبويبات */}
-      <div className="mt-6">
+      {/* Mobile Tabs Menu */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-white border-b border-gray-200 p-2 space-y-1">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => {
+                setActiveTab(tab.id);
+                setMobileMenuOpen(false);
+              }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                activeTab === tab.id
+                  ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-600'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              <tab.icon size={18} />
+              <span className="font-medium">{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8">
+        {/* Desktop Tabs */}
+        <div className="hidden lg:block border-b border-gray-200 mb-6">
+          <nav className="flex gap-1">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-6 py-3 font-medium text-sm rounded-t-lg transition-all ${
+                  activeTab === tab.id
+                    ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <tab.icon size={16} />
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <>
-            {loading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {statCards.map((stat, index) => (
-                  <div key={index} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-gray-500 text-sm">{stat.title}</p>
-                        <p className="text-2xl font-bold text-gray-800 mt-1">{stat.value}</p>
-                      </div>
-                      <div className={`${stat.color} p-3 rounded-full text-white`}>
-                        <stat.icon size={24} />
-                      </div>
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              {statCards.map((stat, index) => (
+                <div key={index} className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow p-4 sm:p-6 border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-gray-500 text-xs sm:text-sm">{stat.title}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-800 mt-1">{stat.value}</p>
+                    </div>
+                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-r ${stat.color} flex items-center justify-center shadow-sm`}>
+                      <stat.icon className="text-white text-base sm:text-lg" />
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
+                </div>
+              ))}
+            </div>
 
-        {activeTab === 'users' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Users Management</h2>
-            <UsersManagement />
+            {/* Recent Activity Section */}
+            <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 border border-gray-100">
+              <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
+              <p className="text-gray-500 text-sm">No recent activity to display.</p>
+            </div>
           </div>
         )}
 
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Users Management</h2>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1">Manage all users in the system</p>
+            </div>
+            <div className="overflow-x-auto">
+              <UsersManagement />
+            </div>
+          </div>
+        )}
+
+        {/* Regulations Tab */}
         {activeTab === 'regulations' && (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Regulations Management</h2>
-            <RegulationsManagement />
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+            <div className="p-4 sm:p-6 border-b border-gray-100">
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Regulations Management</h2>
+              <p className="text-gray-500 text-xs sm:text-sm mt-1">Manage academic regulations and policies</p>
+            </div>
+            <div className="p-4 sm:p-6">
+              <RegulationsManagement />
+            </div>
           </div>
         )}
       </div>
