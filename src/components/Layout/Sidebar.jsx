@@ -35,8 +35,7 @@ const Sidebar = ({ onClose }) => {
   if (!user) return null;
 
   return (
-<aside className="w-64 bg-white shadow-md flex-shrink-0 flex flex-col min-h-screen">
-
+    <aside className="w-64 bg-white shadow-md flex-shrink-0 flex flex-col min-h-screen relative z-10">
       {onClose && (
         <div className="p-4 border-b border-gray-200 flex justify-end">
           <button
@@ -48,7 +47,7 @@ const Sidebar = ({ onClose }) => {
         </div>
       )}
       
-      <nav className="mt-4 flex-1 px-2">
+      <nav className="mt-4 flex-1 px-3">
         {menuItems.map((item) => (
           <NavLink
             key={item.path}
