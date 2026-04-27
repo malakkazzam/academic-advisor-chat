@@ -564,11 +564,11 @@ const AIChatAssistant = () => {
                 disabled={isLoading}
                 style={{ minHeight: '48px' }}
               />
-              {audioMessage && (
+              {/* {audioMessage && (
                 <div className="absolute bottom-2 right-2 text-xs text-green-500">
                   🎤 Voice message ready
                 </div>
-              )}
+              )} */}
             </div>
             <button
               onClick={handleSendMessage}
