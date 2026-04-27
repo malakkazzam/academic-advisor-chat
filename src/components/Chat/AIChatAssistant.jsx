@@ -22,7 +22,7 @@ const AIChatAssistant = () => {
     {
       id: 'welcome-1',
       role: 'assistant',
-      content: "*Welcome to AI Academic Assistant!*\n\nI'm here to help you with:\n• 📚 Course selection and recommendations\n• 📅 Registration deadlines and procedures\n• 📋 Academic policies and regulations\n• 💡 Study tips and success strategies\n• 🎯 Career guidance and internships\n\n**How can I help you today?**",
+      content: "Welcome to AI Academic Assistant!\n\nI'm here to help you with:\n•  Course selection and recommendations\n•  Registration deadlines and procedures\n•  Academic policies and regulations\n•  Study tips and success strategies\n•  Career guidance and internships\n\nHow can I help you today?",
       timestamp: new Date(),
       feedback: null
     }
@@ -170,12 +170,12 @@ const AIChatAssistant = () => {
     } catch (error) {
       console.error('Error sending message:', error);
       
-      let errorText = "⚠️ **Connection error occurred.**\n\nPlease try again.";
+      let errorText = "⚠️ Connection error occurred.\n\nPlease try again.";
       
       if (error.response?.status === 401) {
-        errorText = "🔐 **Session expired.** Please refresh the page and login again.";
+        errorText = "🔐Session expired. Please refresh the page and login again.";
       } else if (error.response?.status === 404) {
-        errorText = "🚀 **AI service is being set up.** Coming soon!";
+        errorText = " AI service is being set up. Coming soon!";
       }
       
       const errorMessage = {

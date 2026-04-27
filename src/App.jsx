@@ -1,5 +1,4 @@
 // src/App.jsx
-
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './hooks/useAuth';
@@ -8,7 +7,6 @@ import ProtectedRoute from './components/Common/ProtectedRoute';
 import Login from './components/Auth/Login';
 import Register from './components/Auth/Register';
 import AIChatAssistant from './components/Chat/AIChatAssistant';
-import Layout from "./layout/Layout";
 import AdminDashboard from './components/Admin/AdminDashboard';
 import StudentsList from './components/Advisor/StudentsList';
 import StudentChatView from './components/Advisor/StudentChatView';
@@ -21,9 +19,9 @@ const AppContent = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
+  // الصفحات اللي مش محتاجة Sidebar (الـ Chat بس)
   const noSidebarPages = ['/chat'];
-  const showMainSidebar =
-    user && !noSidebarPages.includes(location.pathname);
+  const showSidebar = user && !noSidebarPages.includes(location.pathname);
 
   if (loading) {
     return (
@@ -35,19 +33,30 @@ const AppContent = () => {
 
   const role = user?.role?.toLowerCase();
 
+  // صفحة الـ Chat من غير Sidebar
+  if (location.pathname === '/chat') {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {user && <Header />}
+        <AIChatAssistant />
+        <Toaster position="top-right" />
+      </div>
+    );
+  }
+
+  // باقي الصفحات مع Sidebar
   return (
     <div className="min-h-screen bg-gray-50">
       {user && <Header />}
 
       <div className="flex">
-        {showMainSidebar && <Sidebar />}
+        {showSidebar && <Sidebar />}
 
-        <main className={`flex-1 ${showMainSidebar ? "p-6" : ""}`}>
+        <main className={`flex-1 ${showSidebar ? "p-4 sm:p-6" : ""}`}>
           <Routes>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
 
-            {/* الصفحة الرئيسية */}
             <Route
               path="/"
               element={
@@ -65,15 +74,6 @@ const AppContent = () => {
 
             {/* student */}
             <Route
-              path="/chat"
-              element={
-                <ProtectedRoute allowedRoles={["student"]}>
-                  <AIChatAssistant />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
               path="/profile"
               element={
                 <ProtectedRoute>
@@ -86,10 +86,24 @@ const AppContent = () => {
             <Route
               path="/admin"
               element={
-                <ProtectedRoute>
-                  <Layout>
-                    <AdminDashboard />
-                  </Layout>
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/users"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/regulations"
+              element={
+                <ProtectedRoute allowedRoles={["admin"]}>
+                  <AdminDashboard />
                 </ProtectedRoute>
               }
             />
