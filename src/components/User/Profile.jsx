@@ -1,7 +1,7 @@
 // src/components/User/Profile.jsx
 import  { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { FaUser, FaEnvelope, FaPhone, FaKey, FaSave, FaEdit, FaTimes } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaKey, FaSave, FaEdit, FaTimes, FaUserCircle } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const Profile = () => {
@@ -48,12 +48,6 @@ const Profile = () => {
     setLoading(true);
     
     try {
-      // TODO: Connect to actual password change API
-      // const response = await userAPI.changePassword({
-      //   currentPassword: passwordData.currentPassword,
-      //   newPassword: passwordData.newPassword
-      // });
-      
       toast.success('Password changed successfully');
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
       setIsChangingPassword(false);
@@ -65,118 +59,114 @@ const Profile = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
+    <div className="max-w-4xl mx-auto">
       {/* Header */}
-      <div className="mb-8 text-center sm:text-left">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">My Profile</h1>
-        <p className="text-gray-500 text-sm sm:text-base mt-1">Manage your personal information</p>
+      <div className="mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 flex items-center justify-center">
+            <FaUser className="text-white text-lg" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-800">My Profile</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Manage your personal information</p>
+          </div>
+        </div>
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-        {/* Profile Header with Gradient */}
-        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-6 py-8 sm:px-8">
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
-              <FaUser className="text-white text-3xl" />
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Profile Header */}
+        <div className="bg-gradient-to-r from-primary-500 to-primary-600 px-5 py-5">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+              <FaUserCircle className="text-white text-2xl" />
             </div>
-            <div className="text-center sm:text-left">
-              <h2 className="text-xl sm:text-2xl font-bold text-white">{formData.fullName || user?.fullName || user?.name}</h2>
-              <p className="text-white/80 text-sm mt-1">
-                {user?.role === 'admin' ? 'Administrator' : user?.role === 'advisor' ? 'Academic Advisor' : 'Student'}
-              </p>
+            <div>
+              <h2 className="text-lg font-bold text-white">{formData.fullName || user?.fullName || user?.name}</h2>
+              <p className="text-white/80 text-sm mt-0.5 capitalize">{user?.role}</p>
             </div>
           </div>
         </div>
 
         {/* Personal Information Section */}
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <div className="p-5">
+          <div className="flex justify-between items-center mb-5">
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Personal Information</h3>
-              <p className="text-gray-500 text-sm">Update your personal details</p>
+              <h3 className="text-base font-semibold text-gray-800">Personal Information</h3>
+              <p className="text-gray-500 text-xs">Update your personal details</p>
             </div>
             {!isEditing ? (
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex items-center gap-2 px-4 py-2 text-blue-600 border border-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-200 text-sm sm:text-base"
+                className="flex items-center gap-2 px-3 py-1.5 text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition-all text-sm"
               >
-                <FaEdit size={16} />
-                Edit Profile
+                <FaEdit size={14} />
+                Edit
               </button>
             ) : (
               <button
                 onClick={() => setIsEditing(false)}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200"
+                className="flex items-center gap-2 px-3 py-1.5 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all text-sm"
               >
-                <FaTimes size={16} />
+                <FaTimes size={14} />
                 Cancel
               </button>
             )}
           </div>
 
           <form onSubmit={handleProfileUpdate}>
-            <div className="grid grid-cols-1 gap-6">
-              {/* Full Name */}
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
                 <div className="relative">
-                  <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaUser className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                   <input
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                     disabled={!isEditing}
-                    className={`w-full input-field pl-10 ${!isEditing ? 'bg-gray-50 text-gray-500' : ''}`}
+                    className={`w-full input-field pl-9 py-2 text-sm ${!isEditing ? 'bg-gray-50 text-gray-500' : ''}`}
                   />
                 </div>
               </div>
 
-              {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                 <div className="relative">
-                  <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaEnvelope className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     disabled={!isEditing}
-                    className={`w-full input-field pl-10 ${!isEditing ? 'bg-gray-50 text-gray-500' : ''}`}
+                    className={`w-full input-field pl-9 py-2 text-sm ${!isEditing ? 'bg-gray-50 text-gray-500' : ''}`}
                   />
                 </div>
               </div>
 
-              {/* Phone Number */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                 <div className="relative">
-                  <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <FaPhone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     disabled={!isEditing}
-                    className={`w-full input-field pl-10 ${!isEditing ? 'bg-gray-50 text-gray-500' : ''}`}
+                    className={`w-full input-field pl-9 py-2 text-sm ${!isEditing ? 'bg-gray-50 text-gray-500' : ''}`}
                     placeholder="Not provided"
                   />
                 </div>
               </div>
 
               {isEditing && (
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end pt-2">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                    className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all flex items-center gap-2 disabled:opacity-50 text-sm"
                   >
-                    <FaSave size={16} />
+                    <FaSave size={14} />
                     {loading ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
@@ -186,29 +176,29 @@ const Profile = () => {
         </div>
 
         {/* Divider */}
-        <div className="border-t border-gray-200"></div>
+        <div className="border-t border-gray-100"></div>
 
         {/* Change Password Section */}
-        <div className="p-6 sm:p-8">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3">
+        <div className="p-5">
+          <div className="flex justify-between items-center mb-5">
             <div>
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Security</h3>
-              <p className="text-gray-500 text-sm">Update your password</p>
+              <h3 className="text-base font-semibold text-gray-800">Security</h3>
+              <p className="text-gray-500 text-xs">Update your password</p>
             </div>
             {!isChangingPassword ? (
               <button
                 onClick={() => setIsChangingPassword(true)}
-                className="flex items-center gap-2 px-4 py-2 text-purple-600 border border-purple-600 rounded-xl hover:bg-purple-50 transition-all duration-200"
+                className="flex items-center gap-2 px-3 py-1.5 text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition-all text-sm"
               >
-                <FaKey size={16} />
-                Change Password
+                <FaKey size={14} />
+                Change
               </button>
             ) : (
               <button
                 onClick={() => setIsChangingPassword(false)}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 border border-gray-300 rounded-xl hover:bg-gray-50"
+                className="flex items-center gap-2 px-3 py-1.5 text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-all text-sm"
               >
-                <FaTimes size={16} />
+                <FaTimes size={14} />
                 Cancel
               </button>
             )}
@@ -216,34 +206,30 @@ const Profile = () => {
 
           {isChangingPassword && (
             <form onSubmit={handlePasswordChange}>
-              <div className="grid grid-cols-1 gap-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Current Password
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
                   <div className="relative">
-                    <FaKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FaKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                     <input
                       type="password"
                       value={passwordData.currentPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
-                      className="w-full input-field pl-10"
+                      className="w-full input-field pl-9 py-2 text-sm"
                       required
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    New Password
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">New Password</label>
                   <div className="relative">
-                    <FaKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FaKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                     <input
                       type="password"
                       value={passwordData.newPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
-                      className="w-full input-field pl-10"
+                      className="w-full input-field pl-9 py-2 text-sm"
                       required
                     />
                   </div>
@@ -251,28 +237,26 @@ const Profile = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Confirm New Password
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm New Password</label>
                   <div className="relative">
-                    <FaKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <FaKey className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm" />
                     <input
                       type="password"
                       value={passwordData.confirmPassword}
                       onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
-                      className="w-full input-field pl-10"
+                      className="w-full input-field pl-9 py-2 text-sm"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end pt-2">
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-6 py-2.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all duration-200 flex items-center gap-2 disabled:opacity-50"
+                    className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-all flex items-center gap-2 disabled:opacity-50 text-sm"
                   >
-                    <FaSave size={16} />
+                    <FaSave size={14} />
                     {loading ? 'Updating...' : 'Update Password'}
                   </button>
                 </div>
@@ -282,9 +266,9 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Account Info Card */}
-      <div className="mt-6 bg-gray-50 rounded-xl p-4 sm:p-6">
-        <p className="text-xs sm:text-sm text-gray-500 text-center">
+      {/* Account Info */}
+      <div className="mt-4 bg-gray-50 rounded-lg p-3 text-center">
+        <p className="text-xs text-gray-500">
           Member since {new Date().getFullYear()} • Academic Advisor System
         </p>
       </div>
