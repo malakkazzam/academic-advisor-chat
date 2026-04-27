@@ -27,7 +27,7 @@ const AIChatAssistant = () => {
       feedback: null
     }
   ]);
-  
+   const voiceRecorderRef = useRef();
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -112,8 +112,13 @@ const AIChatAssistant = () => {
       messageContent = inputMessage || "[Voice message]";
       console.log('Sending with audio:', audioMessage);
       // Here you can process the audio blob
+      
+         if (voiceRecorderRef.current) {
+        voiceRecorderRef.current.clearRecording();
+      }
       setAudioMessage(null);
     }
+    
     
     if (!messageContent.trim()) return;
 
@@ -204,7 +209,7 @@ const AIChatAssistant = () => {
         {
           id: 'welcome-new',
           role: 'assistant',
-          content: "✨ **Chat cleared.**\n\nHow can I help you today?",
+          content: "Chat cleared.\n\nHow can I help you today?",
           timestamp: new Date(),
           feedback: null
         }
@@ -258,7 +263,7 @@ const AIChatAssistant = () => {
             {
               id: 'welcome-new',
               role: 'assistant',
-              content: "✨ **Chat cleared.**\n\nHow can I help you today?",
+              content: "Chat cleared.\n\nHow can I help you today?",
               timestamp: new Date(),
               feedback: null
             }
@@ -550,26 +555,33 @@ const AIChatAssistant = () => {
         <div className="p-4 sm:p-5 border-t border-gray-200/50 bg-white/95 backdrop-blur-sm flex-shrink-0">
           <div className="flex gap-2 items-end">
             {/* Voice Recorder */}
-            <VoiceRecorder onRecordingComplete={handleVoiceRecordingComplete} />
+              <VoiceRecorder 
+            ref={voiceRecorderRef}  // ✅ ربط الـ ref
+            onRecordingComplete={handleVoiceRecordingComplete} 
+          /> 
             
-            <div className="flex-1 relative">
-              <textarea
-                ref={inputRef}
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about courses, registration, or academic guidance..."
-                className="w-full input-field resize-none py-3 px-4 text-sm rounded-xl border-gray-200 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 transition-all duration-200"
-                rows={window.innerWidth < 640 ? 1 : 2}
-                disabled={isLoading}
-                style={{ minHeight: '48px' }}
-              />
-              {/* {audioMessage && (
-                <div className="absolute bottom-2 right-2 text-xs text-green-500">
-                  🎤 Voice message ready
-                </div>
-              )} */}
-            </div>
+ <div className="flex-1 relative">
+  <textarea
+    ref={inputRef}
+    value={inputMessage}
+    onChange={(e) => {
+      setInputMessage(e.target.value);
+      // Auto-resize based on content
+      e.target.style.height = 'auto';
+      e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
+    }}
+    onKeyPress={handleKeyPress}
+    placeholder="Ask me anything about courses, registration, or academic guidance..."
+    className="w-full input-field resize-none py-2 px-4 text-sm rounded-md border-gray-200 focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-all duration-200"
+    rows={1}
+    disabled={isLoading}
+    style={{ 
+      minHeight: '44px',
+      maxHeight: '100px',
+      overflowY: 'auto'
+    }}
+  />
+</div>
             <button
               onClick={handleSendMessage}
               disabled={(!inputMessage.trim() && !audioMessage) || isLoading}

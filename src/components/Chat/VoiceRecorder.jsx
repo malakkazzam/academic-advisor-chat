@@ -1,15 +1,30 @@
 // src/components/Chat/VoiceRecorder.jsx
-import  { useState, useRef } from 'react';
+import  { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import { FaMicrophone, FaStop, FaPlay, FaTrash } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
-const VoiceRecorder = ({ onRecordingComplete }) => {
+const VoiceRecorder = forwardRef(({ onRecordingComplete }, ref) => {
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
+
+  // ✅ دالة لمسح التسجيل من الـ UI
+  const clearRecording = () => {
+    setAudioURL(null);
+    setIsPlaying(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+  };
+
+  // ✅ ن expose الدالة عشان تبقى متاحة من الـ parent component
+  useImperativeHandle(ref, () => ({
+    clearRecording
+  }));
 
   const startRecording = async () => {
     try {
@@ -27,20 +42,13 @@ const VoiceRecorder = ({ onRecordingComplete }) => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const url = URL.createObjectURL(audioBlob);
         setAudioURL(url);
-        
-        // Stop all tracks
         mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
-        
-        if (onRecordingComplete) {
-          onRecordingComplete(audioBlob);
-        }
-        
+        if (onRecordingComplete) onRecordingComplete(audioBlob);
         toast.success('Recording saved!');
       };
 
       mediaRecorderRef.current.start();
       setIsRecording(true);
-      toast.success('Recording started...');
     } catch (error) {
       console.error('Error accessing microphone:', error);
       toast.error('Could not access microphone. Please check permissions.');
@@ -70,7 +78,6 @@ const VoiceRecorder = ({ onRecordingComplete }) => {
   };
 
   const deleteAudio = () => {
-    setAudioURL(null);
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.currentTime = 0;
@@ -130,6 +137,8 @@ const VoiceRecorder = ({ onRecordingComplete }) => {
       )}
     </div>
   );
-};
+});
+
+VoiceRecorder.displayName = 'VoiceRecorder';
 
 export default VoiceRecorder;
