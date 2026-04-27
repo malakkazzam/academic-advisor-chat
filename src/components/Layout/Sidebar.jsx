@@ -6,7 +6,7 @@ import { FaHome, FaRobot, FaUser, FaUsers, FaBook, FaChartLine, FaTimes } from '
 
 const Sidebar = ({ onClose }) => {
   const { user } = useAuth();
-  const location = useLocation(); // ✅ مستخدمة
+  const location = useLocation();
 
   const menuItems = React.useMemo(() => {
     switch (user?.role?.toLowerCase()) {
@@ -37,6 +37,7 @@ const Sidebar = ({ onClose }) => {
 
   return (
     <aside className="w-64 bg-white shadow-md min-h-screen flex-shrink-0 flex flex-col">
+      {/* Close button for mobile */}
       {onClose && (
         <div className="p-4 border-b border-gray-200 flex justify-end">
           <button
@@ -50,7 +51,6 @@ const Sidebar = ({ onClose }) => {
       
       <nav className="mt-4 flex-1">
         {menuItems.map((item) => {
-          // ✅ استخدام location لتحديد active state
           const isActive = location.pathname === item.path || 
                           (item.path === '/admin' && location.pathname.startsWith('/admin/')) ||
                           (item.path === '/advisor' && location.pathname.startsWith('/advisor/'));
@@ -61,30 +61,39 @@ const Sidebar = ({ onClose }) => {
               to={item.path}
               onClick={onClose}
               end={item.path === '/admin' || item.path === '/advisor'}
-              className={({ isActive: navIsActive }) =>
-                `group relative flex items-center gap-3 px-6 py-3 text-gray-700 transition-all duration-300 ease-in-out ${
-                  (navIsActive || isActive)
-                    ? 'bg-primary-50 text-primary-500 border-r-4 border-primary-500' 
-                    : 'hover:bg-gradient-to-r hover:from-primary-50 hover:to-transparent hover:text-primary-500'
-                }`
-              }
+              className={({ isActive: navIsActive }) => {
+                const active = navIsActive || isActive;
+                return `
+                  group relative flex items-center gap-3 px-6 py-3 mx-2 my-1 rounded-lg
+                  transition-all duration-200 ease-out
+                  ${active 
+                    ? 'bg-primary-50 text-primary-500' 
+                    : 'text-gray-600 hover:bg-gray-100 hover:text-primary-500'
+                  }
+                `;
+              }}
             >
               <item.icon 
                 size={20} 
-                className={`transition-all duration-300 ease-in-out group-hover:scale-110 group-hover:rotate-3`}
+                className={`
+                  transition-all duration-200
+                  ${({ isActive: navIsActive }) => {
+                    const active = navIsActive || isActive;
+                    return active ? 'text-primary-500' : 'text-gray-400 group-hover:text-primary-500';
+                  }}
+                `}
               />
               
-              <span className="transition-all duration-300 ease-in-out group-hover:translate-x-1">
+              <span className="text-sm font-medium">
                 {item.label}
               </span>
-              
-              <span className="absolute bottom-2 left-6 w-0 h-0.5 bg-primary-500 transition-all duration-300 ease-in-out group-hover:w-8"></span>
             </NavLink>
           );
         })}
       </nav>
       
-      <div className="p-4 border-t border-gray-200 text-center">
+      {/* Footer */}
+      <div className="p-4 border-t border-gray-200 text-center mt-auto">
         <p className="text-xs text-gray-400">AI Academic Advisor</p>
       </div>
     </aside>

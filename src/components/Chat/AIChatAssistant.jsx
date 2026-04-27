@@ -12,7 +12,7 @@ import {
   FaSpinner,
   FaHistory,
   FaChevronLeft,
-  FaMicrophone
+  
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import VoiceRecorder from './VoiceRecorder';
@@ -585,12 +585,12 @@ const AIChatAssistant = () => {
           </div>
           
           {/* Audio message indicator */}
-          {audioMessage && (
+          {/* {audioMessage && (
             <div className="mt-2 text-sm text-green-600 bg-green-50 rounded-lg p-2 flex items-center gap-2">
               <FaMicrophone />
               <span>Voice message recorded. Click send to share.</span>
             </div>
-          )}
+          )} */}
           
           {/* Suggested Questions */}
           <div className="grid grid-cols-2 gap-2 mt-4">
