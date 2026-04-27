@@ -67,6 +67,8 @@ export const userAPI = {
 export const adminAPI = {
   getDashboard: () => api.get('/Admin/dashboard'),
   getUsers: () => api.get('/Admin/users'),
+updateUser: (id, data) => api.put(`/Admin/user/${id}`, data),
+
   toggleUserStatus: (id) => api.put(`/Admin/users/${id}/toggle-status`),
   deleteUser: (id) => api.delete(`/Admin/users/${id}`),
   getRegulations: () => api.get('/Admin/regulations'),
