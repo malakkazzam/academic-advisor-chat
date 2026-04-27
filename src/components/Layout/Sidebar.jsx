@@ -1,12 +1,11 @@
 // src/components/Layout/Sidebar.jsx
 import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { FaHome, FaRobot, FaUser, FaUsers, FaBook, FaChartLine, FaTimes } from 'react-icons/fa';
 
 const Sidebar = ({ onClose }) => {
   const { user } = useAuth();
-  const location = useLocation();
 
   const menuItems = React.useMemo(() => {
     switch (user?.role?.toLowerCase()) {
@@ -37,7 +36,6 @@ const Sidebar = ({ onClose }) => {
 
   return (
     <aside className="w-64 bg-white shadow-md min-h-screen flex-shrink-0 flex flex-col">
-      {/* Close button for mobile */}
       {onClose && (
         <div className="p-4 border-b border-gray-200 flex justify-end">
           <button
@@ -49,50 +47,27 @@ const Sidebar = ({ onClose }) => {
         </div>
       )}
       
-      <nav className="mt-4 flex-1">
-        {menuItems.map((item) => {
-          const isActive = location.pathname === item.path || 
-                          (item.path === '/admin' && location.pathname.startsWith('/admin/')) ||
-                          (item.path === '/advisor' && location.pathname.startsWith('/advisor/'));
-          
-          return (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={onClose}
-              end={item.path === '/admin' || item.path === '/advisor'}
-              className={({ isActive: navIsActive }) => {
-                const active = navIsActive || isActive;
-                return `
-                  group relative flex items-center gap-3 px-6 py-3 mx-2 my-1 rounded-lg
-                  transition-all duration-200 ease-out
-                  ${active 
-                    ? 'bg-primary-50 text-primary-500' 
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-primary-500'
-                  }
-                `;
-              }}
-            >
-              <item.icon 
-                size={20} 
-                className={`
-                  transition-all duration-200
-                  ${({ isActive: navIsActive }) => {
-                    const active = navIsActive || isActive;
-                    return active ? 'text-primary-500' : 'text-gray-400 group-hover:text-primary-500';
-                  }}
-                `}
-              />
-              
-              <span className="text-sm font-medium">
-                {item.label}
-              </span>
-            </NavLink>
-          );
-        })}
+      <nav className="mt-4 flex-1 px-2">
+        {menuItems.map((item) => (
+          <NavLink
+            key={item.path}
+            to={item.path}
+            onClick={onClose}
+            end={item.path === '/admin' || item.path === '/advisor'}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-4 py-2.5 my-1 rounded-lg transition-all duration-200 ${
+                isActive 
+                  ? 'bg-primary-50 text-primary-500' 
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-primary-500'
+              }`
+            }
+          >
+            <item.icon size={18} />
+            <span className="text-sm">{item.label}</span>
+          </NavLink>
+        ))}
       </nav>
       
-      {/* Footer */}
       <div className="p-4 border-t border-gray-200 text-center mt-auto">
         <p className="text-xs text-gray-400">AI Academic Advisor</p>
       </div>
