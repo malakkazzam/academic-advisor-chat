@@ -46,10 +46,10 @@ const AppContent = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+<div className="min-h-screen bg-gray-50 flex flex-col" style={{ height: '100%' }}>
       {user && <Header />}
 
-      <div className="flex flex-1">
+<div className="flex flex-1" style={{ minHeight: 0 }}>
   {showSidebar && (
   <>
     {/* Mobile Menu Button - لون غامق عشان يبان */}
@@ -72,7 +72,7 @@ const AppContent = () => {
     </div>
 
     {/* Desktop Sidebar - يظهر على lg فأكبر (أكبر من 1024px) */}
-    <div className="hidden lg:block flex-shrink-0">
+<div className="hidden lg:block flex-shrink-0" style={{ height: '100%' }}>
       <Sidebar />
     </div>
   </>

@@ -35,7 +35,8 @@ const Sidebar = ({ onClose }) => {
   if (!user) return null;
 
   return (
-    <aside className="w-64 bg-white shadow-md min-h-screen flex-shrink-0 flex flex-col">
+<aside className="w-64 bg-white shadow-md flex-shrink-0 flex flex-col min-h-screen">
+
       {onClose && (
         <div className="p-4 border-b border-gray-200 flex justify-end">
           <button

@@ -88,3 +88,13 @@ textarea {
   background: linear-gradient(135deg, #4f46e5, #7c3aed);
 }
 
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+}
