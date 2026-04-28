@@ -22,54 +22,35 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   // check auth
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('token');
-      const storedUser = localStorage.getItem('user');
-
-      if (token && storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser);
-
-          // توحيد الـ role
-          parsedUser.role = parsedUser.role?.toLowerCase();
-
-          if (isMounted.current) {
-            setUser(parsedUser);
-          }
-
-          // لو عندك endpoint profile
-          try {
-            const response = await userAPI.getProfile();
-
-            if (response?.data && isMounted.current) {
-              const userData = response.data.user || response.data;
-
-              userData.role = userData.role?.toLowerCase();
-
-              setUser(userData);
-              localStorage.setItem(
-                'user',
-                JSON.stringify(userData)
-              );
-            }
-          } catch {
-            // تجاهل لو endpoint مش موجود
-          }
-        } catch {
+useEffect(() => {
+  const checkAuth = async () => {
+    const token = localStorage.getItem('token');
+    const storedUser = localStorage.getItem('user');
+    
+    console.log('Checking auth - token exists:', !!token);
+    
+    if (token && storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (isMounted.current && parsedUser) {
+          setUser(parsedUser);
+        }
+      } catch (err) {
+        console.error('Error parsing stored user:', err);
+        if (isMounted.current) {
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           setUser(null);
         }
       }
+    }
+    if (isMounted.current) {
+      setLoading(false);
+    }
+  };
 
-      if (isMounted.current) {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
+  checkAuth();
+}, []);
 
   // login
   const login = useCallback(

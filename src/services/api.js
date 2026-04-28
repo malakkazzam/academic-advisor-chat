@@ -66,7 +66,14 @@ export const chatAPI = {
 
 // ==================== USER ====================
 export const userAPI = {
-  getProfile: () => api.get('/User/profile'),
+  getProfile: () => api.get('/User/profile').catch(error => {
+  
+    if (error.response?.status === 404) {
+      console.debug('Profile endpoint not available (this is expected)');
+      return { data: null };
+    }
+    throw error;
+  }),
   updateProfile: (data) => api.put('/User/profile', data),
   changePassword: (data) => api.post('/User/change-password', data),
 };
