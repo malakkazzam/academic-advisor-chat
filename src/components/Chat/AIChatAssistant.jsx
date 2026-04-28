@@ -102,100 +102,79 @@ const AIChatAssistant = () => {
     return `msg-${Date.now()}-${messageIdCounter.current}`;
   };
 
-  const handleSendMessage = async () => {
-    if ((!inputMessage.trim() && !audioMessage) || isLoading) return;
+const handleSendMessage = async () => {
+  if ((!inputMessage.trim() && !audioMessage) || isLoading) return;
 
-    let messageContent = inputMessage;
-    
-    // If there's an audio message, add it to the content
-    if (audioMessage) {
-      messageContent = inputMessage || "[Voice message]";
-      console.log('Sending with audio:', audioMessage);
-      // Here you can process the audio blob
-      
-         if (voiceRecorderRef.current) {
-        voiceRecorderRef.current.clearRecording();
-      }
-      setAudioMessage(null);
+  let messageContent = inputMessage;
+  
+  if (audioMessage) {
+    messageContent = inputMessage || "[Voice message]";
+    if (voiceRecorderRef.current) {
+      voiceRecorderRef.current.clearRecording();
     }
-    
-    
-    if (!messageContent.trim()) return;
+    setAudioMessage(null);
+  }
+  
+  if (!messageContent.trim()) return;
 
-    const userMessage = {
+  const userMessage = {
+    id: generateId(),
+    role: 'user',
+    content: messageContent,
+    timestamp: new Date(),
+    feedback: null
+  };
+  
+  setMessages(prev => [...prev, userMessage]);
+  const currentMessage = messageContent;
+  setInputMessage('');
+  setIsLoading(true);
+  setIsTyping(true);
+
+  try {
+    // ✅ البيانات بالتنسيق الصحيح
+    const response = await chatAPI.sendMessage({
+      content: currentMessage,
+      type: audioMessage ? 'audio' : 'text'
+    });
+    
+    console.log('Response from backend:', response.data);
+    
+    // ✅ استخراج الرد من الـ Response
+    const aiResponse = response.data?.content || 
+                       response.data?.message || 
+                       response.data?.response ||
+                       "Thank you for your message. I'll respond shortly.";
+    
+    const aiMessage = {
       id: generateId(),
-      role: 'user',
-      content: messageContent,
+      role: 'assistant',
+      content: aiResponse,
+      timestamp: new Date(),
+      feedback: null,
+      messageId: response.data?.id
+    };
+    
+    setMessages(prev => [...prev, aiMessage]);
+    
+  } catch (error) {
+    console.error('Error sending message:', error);
+    
+    let errorText = "⚠️ Connection error occurred.\n\nPlease try again.";
+    
+    const errorMessage = {
+      id: generateId(),
+      role: 'assistant',
+      content: errorText,
       timestamp: new Date(),
       feedback: null
     };
-    
-    setMessages(prev => [...prev, userMessage]);
-    const currentMessage = messageContent;
-    setInputMessage('');
-    setIsLoading(true);
-    setIsTyping(true);
-
-    try {
-      const response = await chatAPI.sendMessage({
-        content: currentMessage,
-        type: audioMessage ? 'audio' : 'text'
-      });
-      
-      console.log('Response from backend:', response.data);
-      
-      const aiResponse = response.data?.message || 
-                         response.data?.response || 
-                         response.data?.content ||
-                         response.data?.reply ||
-                         "Thank you for your message. I'll respond shortly.";
-      
-      const aiMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: aiResponse,
-        timestamp: new Date(),
-        feedback: null,
-        messageId: response.data?.id
-      };
-      
-      setMessages(prev => [...prev, aiMessage]);
-      
-      // Refresh conversations list after sending message
-      const convResponse = await chatAPI.getConversations();
-      const formattedConversations = (convResponse.data || []).map(conv => ({
-        id: conv.id,
-        title: conv.title || `Conversation ${conv.id}`,
-        lastMessage: conv.lastMessage || conv.lastMessageContent || currentMessage.substring(0, 30),
-        date: conv.updatedAt || conv.createdAt || new Date().toISOString(),
-        preview: conv.preview || currentMessage.substring(0, 50)
-      }));
-      setConversations(formattedConversations);
-      
-    } catch (error) {
-      console.error('Error sending message:', error);
-      
-      let errorText = "⚠️ Connection error occurred.\n\nPlease try again.";
-      
-      if (error.response?.status === 401) {
-        errorText = "🔐Session expired. Please refresh the page and login again.";
-      } else if (error.response?.status === 404) {
-        errorText = " AI service is being set up. Coming soon!";
-      }
-      
-      const errorMessage = {
-        id: generateId(),
-        role: 'assistant',
-        content: errorText,
-        timestamp: new Date(),
-        feedback: null
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      setIsTyping(false);
-    }
-  };
+    setMessages(prev => [...prev, errorMessage]);
+  } finally {
+    setIsLoading(false);
+    setIsTyping(false);
+  }
+}; 
 
   const handleVoiceRecordingComplete = (audioBlob) => {
     console.log('Recording completed:', audioBlob);

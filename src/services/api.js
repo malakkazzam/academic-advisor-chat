@@ -49,7 +49,10 @@ export const authAPI = {
 
 // ==================== CHAT ====================
 export const chatAPI = {
-  sendMessage: (data) => api.post('/Chat/send', data),
+  sendMessage: (data) => api.post('/Chat/send', {
+    Message: data.content,  
+    Type: data.type         
+  }),
   getConversations: () => api.get('/Chat/conversations'),
   getConversationById: (id) => api.get(`/Chat/conversations/${id}`),
   markMessageAsRead: (id) => api.put(`/Chat/messages/${id}/read`),
