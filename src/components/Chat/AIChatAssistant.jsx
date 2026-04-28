@@ -131,20 +131,33 @@ const handleSendMessage = async () => {
   setIsLoading(true);
   setIsTyping(true);
 
+  console.log('📤 Sending message:', { content: currentMessage, type: audioMessage ? 'audio' : 'text' });
+
   try {
-    // ✅ البيانات بالتنسيق الصحيح
     const response = await chatAPI.sendMessage({
       content: currentMessage,
       type: audioMessage ? 'audio' : 'text'
     });
     
-    console.log('Response from backend:', response.data);
+    console.log('📥 Full response:', response);
+    console.log('📥 Response data:', response.data);
     
-    // ✅ استخراج الرد من الـ Response
-    const aiResponse = response.data?.content || 
-                       response.data?.message || 
-                       response.data?.response ||
-                       "Thank you for your message. I'll respond shortly.";
+    // استخراج الرد
+    let aiResponse = "Thank you for your message.";
+    
+    if (response.data?.content) {
+      aiResponse = response.data.content;
+    } else if (response.data?.message) {
+      aiResponse = response.data.message;
+    } else if (response.data?.response) {
+      aiResponse = response.data.response;
+    } else if (response.data?.reply) {
+      aiResponse = response.data.reply;
+    } else if (typeof response.data === 'string') {
+      aiResponse = response.data;
+    }
+    
+    console.log('🤖 AI Response:', aiResponse);
     
     const aiMessage = {
       id: generateId(),
@@ -158,7 +171,9 @@ const handleSendMessage = async () => {
     setMessages(prev => [...prev, aiMessage]);
     
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error('❌ Error details:', error);
+    console.error('❌ Error response:', error.response?.data);
+    console.error('❌ Error status:', error.response?.status);
     
     let errorText = "⚠️ Connection error occurred.\n\nPlease try again.";
     
