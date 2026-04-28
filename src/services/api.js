@@ -61,7 +61,7 @@ export const chatAPI = {
   getConversations: () => api.get('/Chat/conversations'),
   getConversationById: (id) => api.get(`/Chat/conversations/${id}`),
   markMessageAsRead: (id) => api.put(`/Chat/messages/${id}/read`),
-  deleteConversation: (id) => api.delete(`/Chat/conversations/${id}`),
+  deleteConversation: (id) => axios.post(`/api/Chat/conversations/${id}/delete`),
 };
 
 // ==================== USER ====================
