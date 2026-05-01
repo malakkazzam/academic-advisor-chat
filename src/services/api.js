@@ -63,8 +63,12 @@ export const deleteUser = (userId) => api.delete(`/Admin/users/${userId}`);
 export const updateUserRole = (userId, role) => api.put(`/Admin/users/${userId}/role`, role);
 export const getRegulations = () => api.get('/Admin/regulations');
 export const getRegulationById = (id) => api.get(`/Admin/regulations/${id}`);
-export const createRegulation = (data) => api.post('/Admin/regulations', data);
-export const updateRegulation = (id, data) => api.put(`/Admin/regulations/${id}`, data);
+export const createRegulation = (data) => api.post('/Admin/regulations', {
+  question: data.question,
+  answer: data.answer,
+  category: data.category,
+  keywords: data.keywords || ''
+});export const updateRegulation = (id, data) => api.put(`/Admin/regulations/${id}`, data);
 export const deleteRegulation = (id) => api.delete(`/Admin/regulations/${id}`);
 export const bulkImportRegulations = (data) => api.post('/Admin/regulations/bulk', data);
 export const exportRegulations = () => api.get('/Admin/regulations/export', { responseType: 'blob' });

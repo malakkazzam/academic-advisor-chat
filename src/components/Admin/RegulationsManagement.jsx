@@ -1,5 +1,5 @@
 // src/components/Admin/RegulationsManagement.jsx
-import  { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { adminAPI } from '../../services/api';
 import { FaEdit, FaTrash, FaPlus, FaSearch, FaTimes } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -11,9 +11,9 @@ const RegulationsManagement = () => {
   const [editingRegulation, setEditingRegulation] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formData, setFormData] = useState({
-    title: '',
-    content: '',
-    category: 'academic'
+    question: '',
+    answer: '',
+    category: 'Courses'  // ✅ changed from 'academic' to 'Courses'
   });
   
   const isMounted = useRef(true);
@@ -49,11 +49,19 @@ const RegulationsManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      // ✅ Prepare data in correct format for API
+      const apiData = {
+        question: formData.question,
+        answer: formData.answer,
+        category: formData.category,
+        keywords: ''
+      };
+      
       if (editingRegulation) {
-        await adminAPI.updateRegulation(editingRegulation.id, formData);
+        await adminAPI.updateRegulation(editingRegulation.id, apiData);
         toast.success('Regulation updated');
       } else {
-        await adminAPI.createRegulation(formData);
+        await adminAPI.createRegulation(apiData);
         toast.success('Regulation created');
       }
       const response = await adminAPI.getRegulations();
@@ -62,9 +70,10 @@ const RegulationsManagement = () => {
       }
       setShowModal(false);
       resetForm();
-    } catch {
+    } catch (err) {
+      console.error('Error saving regulation:', err);
       if (isMounted.current) {
-        toast.error('Failed to save regulation');
+        toast.error(err.response?.data?.error || 'Failed to save regulation');
       }
     }
   };
@@ -87,7 +96,11 @@ const RegulationsManagement = () => {
   };
 
   const resetForm = () => {
-    setFormData({ title: '', content: '', category: 'academic' });
+    setFormData({ 
+      question: '', 
+      answer: '', 
+      category: 'Courses'  // ✅ changed from 'academic' to 'Courses'
+    });
     setEditingRegulation(null);
   };
 
@@ -95,8 +108,8 @@ const RegulationsManagement = () => {
     if (regulation) {
       setEditingRegulation(regulation);
       setFormData({
-        title: regulation.title,
-        content: regulation.content,
+        question: regulation.question || regulation.title,
+        answer: regulation.answer || regulation.content,
         category: regulation.category
       });
     } else {
@@ -106,14 +119,23 @@ const RegulationsManagement = () => {
   };
 
   const filteredRegulations = regulations.filter(reg =>
-    reg.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    reg.content?.toLowerCase().includes(searchTerm.toLowerCase())
+    (reg.question || reg.title)?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (reg.answer || reg.content)?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // ✅ Updated category colors with correct API values
   const categoryColors = {
-    academic: 'from-blue-500 to-blue-600',
-    administrative: 'from-purple-500 to-purple-600',
-    student: 'from-green-500 to-green-600'
+    Courses: 'from-blue-500 to-blue-600',
+    Registration: 'from-green-500 to-green-600',
+    Grades: 'from-yellow-500 to-orange-600',
+    Dates: 'from-purple-500 to-purple-600',
+    Rules: 'from-red-500 to-red-600',
+    General: 'from-gray-500 to-gray-600'
+  };
+
+  // ✅ Default color for unknown categories
+  const getCategoryColor = (category) => {
+    return categoryColors[category] || 'from-gray-500 to-gray-600';
   };
 
   if (loading) {
@@ -159,8 +181,10 @@ const RegulationsManagement = () => {
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-semibold text-gray-800 text-base sm:text-lg">{reg.title}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${categoryColors[reg.category]} text-white`}>
+                    <h3 className="font-semibold text-gray-800 text-base sm:text-lg">
+                      {reg.question || reg.title}
+                    </h3>
+                    <span className={`text-xs px-2 py-0.5 rounded-full bg-gradient-to-r ${getCategoryColor(reg.category)} text-white`}>
                       {reg.category}
                     </span>
                   </div>
@@ -181,7 +205,7 @@ const RegulationsManagement = () => {
                 </div>
               </div>
               <p className="text-gray-600 text-sm leading-relaxed line-clamp-3">
-                {reg.content}
+                {reg.answer || reg.content}
               </p>
             </div>
           ))}
@@ -205,11 +229,11 @@ const RegulationsManagement = () => {
             </div>
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Question / Title</label>
                 <input
                   type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  value={formData.question}
+                  onChange={(e) => setFormData({ ...formData, question: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   required
                 />
@@ -221,16 +245,19 @@ const RegulationsManagement = () => {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
-                  <option value="academic">Academic</option>
-                  <option value="administrative">Administrative</option>
-                  <option value="student">Student</option>
+                  <option value="Courses">Courses</option>
+                  <option value="Registration">Registration</option>
+                  <option value="Grades">Grades</option>
+                  <option value="Dates">Dates</option>
+                  <option value="Rules">Rules</option>
+                  <option value="General">General</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Answer / Content</label>
                 <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                  value={formData.answer}
+                  onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
                   rows={5}
                   className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
                   required
@@ -259,4 +286,4 @@ const RegulationsManagement = () => {
   );
 };
 
-export default RegulationsManagement;
+export default RegulationsManagement; 
