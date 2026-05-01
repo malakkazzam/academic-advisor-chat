@@ -1,6 +1,11 @@
 // src/components/Chat/AIChatAssistant.jsx
-import  { useState, useEffect, useRef, useCallback } from 'react';
-import { chatAPI } from '../../services/api';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { 
+  getConversations, 
+  getConversation, 
+  deleteConversation as deleteConversationApi, 
+  sendMessage as sendMessageApi 
+} from '../../services/api';
 import { 
   FaRobot, 
   FaPaperPlane, 
@@ -12,7 +17,6 @@ import {
   FaSpinner,
   FaHistory,
   FaChevronLeft,
-  
 } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import VoiceRecorder from './VoiceRecorder';
@@ -27,7 +31,7 @@ const AIChatAssistant = () => {
       feedback: null
     }
   ]);
-   const voiceRecorderRef = useRef();
+  const voiceRecorderRef = useRef();
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -57,7 +61,7 @@ const AIChatAssistant = () => {
       checkConnectionRef.current = true;
       const checkConnection = async () => {
         try {
-          const response = await chatAPI.getConversations();
+          const response = await getConversations();
           if (response.status === 200) {
             setIsConnected(true);
           }
@@ -75,7 +79,7 @@ const AIChatAssistant = () => {
     const fetchConversations = async () => {
       setIsLoadingHistory(true);
       try {
-        const response = await chatAPI.getConversations();
+        const response = await getConversations();
         console.log('Fetched conversations:', response.data);
         
         const formattedConversations = (response.data || []).map(conv => ({
@@ -102,94 +106,93 @@ const AIChatAssistant = () => {
     return `msg-${Date.now()}-${messageIdCounter.current}`;
   };
 
-const handleSendMessage = async () => {
-  if ((!inputMessage.trim() && !audioMessage) || isLoading) return;
+  const handleSendMessage = async () => {
+    if ((!inputMessage.trim() && !audioMessage) || isLoading) return;
 
-  let messageContent = inputMessage;
-  
-  if (audioMessage) {
-    messageContent = inputMessage || "[Voice message]";
-    if (voiceRecorderRef.current) {
-      voiceRecorderRef.current.clearRecording();
-    }
-    setAudioMessage(null);
-  }
-  
-  if (!messageContent.trim()) return;
-
-  const userMessage = {
-    id: generateId(),
-    role: 'user',
-    content: messageContent,
-    timestamp: new Date(),
-    feedback: null
-  };
-  
-  setMessages(prev => [...prev, userMessage]);
-  const currentMessage = messageContent;
-  setInputMessage('');
-  setIsLoading(true);
-  setIsTyping(true);
-
-  console.log('📤 Sending message:', { content: currentMessage, type: audioMessage ? 'audio' : 'text' });
-
-  try {
-    const response = await chatAPI.sendMessage({
-      content: currentMessage,
-      type: audioMessage ? 'audio' : 'text'
-    });
+    let messageContent = inputMessage;
     
-    console.log('📥 Full response:', response);
-    console.log('📥 Response data:', response.data);
-    
-    // استخراج الرد
-    let aiResponse = "Thank you for your message.";
-    
-    if (response.data?.content) {
-      aiResponse = response.data.content;
-    } else if (response.data?.message) {
-      aiResponse = response.data.message;
-    } else if (response.data?.response) {
-      aiResponse = response.data.response;
-    } else if (response.data?.reply) {
-      aiResponse = response.data.reply;
-    } else if (typeof response.data === 'string') {
-      aiResponse = response.data;
+    if (audioMessage) {
+      messageContent = inputMessage || "[Voice message]";
+      if (voiceRecorderRef.current) {
+        voiceRecorderRef.current.clearRecording();
+      }
+      setAudioMessage(null);
     }
     
-    console.log('🤖 AI Response:', aiResponse);
-    
-    const aiMessage = {
+    if (!messageContent.trim()) return;
+
+    const userMessage = {
       id: generateId(),
-      role: 'assistant',
-      content: aiResponse,
-      timestamp: new Date(),
-      feedback: null,
-      messageId: response.data?.id
-    };
-    
-    setMessages(prev => [...prev, aiMessage]);
-    
-  } catch (error) {
-    console.error('❌ Error details:', error);
-    console.error('❌ Error response:', error.response?.data);
-    console.error('❌ Error status:', error.response?.status);
-    
-    let errorText = "⚠️ Connection error occurred.\n\nPlease try again.";
-    
-    const errorMessage = {
-      id: generateId(),
-      role: 'assistant',
-      content: errorText,
+      role: 'user',
+      content: messageContent,
       timestamp: new Date(),
       feedback: null
     };
-    setMessages(prev => [...prev, errorMessage]);
-  } finally {
-    setIsLoading(false);
-    setIsTyping(false);
-  }
-}; 
+    
+    setMessages(prev => [...prev, userMessage]);
+    const currentMessage = messageContent;
+    setInputMessage('');
+    setIsLoading(true);
+    setIsTyping(true);
+
+    console.log('📤 Sending message:', { content: currentMessage, type: audioMessage ? 'audio' : 'text' });
+
+    try {
+      const response = await sendMessageApi({
+        content: currentMessage,
+        type: audioMessage ? 'audio' : 'text'
+      });
+      
+      console.log('📥 Full response:', response);
+      console.log('📥 Response data:', response.data);
+      
+      let aiResponse = "Thank you for your message.";
+      
+      if (response.data?.content) {
+        aiResponse = response.data.content;
+      } else if (response.data?.message) {
+        aiResponse = response.data.message;
+      } else if (response.data?.response) {
+        aiResponse = response.data.response;
+      } else if (response.data?.reply) {
+        aiResponse = response.data.reply;
+      } else if (typeof response.data === 'string') {
+        aiResponse = response.data;
+      }
+      
+      console.log('🤖 AI Response:', aiResponse);
+      
+      const aiMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: new Date(),
+        feedback: null,
+        messageId: response.data?.id
+      };
+      
+      setMessages(prev => [...prev, aiMessage]);
+      
+    } catch (error) {
+      console.error('❌ Error details:', error);
+      console.error('❌ Error response:', error.response?.data);
+      console.error('❌ Error status:', error.response?.status);
+      
+      let errorText = "⚠️ Connection error occurred.\n\nPlease try again.";
+      
+      const errorMessage = {
+        id: generateId(),
+        role: 'assistant',
+        content: errorText,
+        timestamp: new Date(),
+        feedback: null
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+      setIsTyping(false);
+    }
+  };
 
   const handleVoiceRecordingComplete = (audioBlob) => {
     console.log('Recording completed:', audioBlob);
@@ -217,7 +220,7 @@ const handleSendMessage = async () => {
     setIsLoadingHistory(true);
     
     try {
-      const response = await chatAPI.getConversationById(conversation.id);
+      const response = await getConversation(conversation.id);
       console.log('Loaded conversation:', response.data);
       
       const loadedMessages = (response.data.messages || []).map(msg => ({
@@ -249,7 +252,7 @@ const handleSendMessage = async () => {
     
     if (window.confirm('Delete this conversation?')) {
       try {
-        await chatAPI.deleteConversation(conversationId);
+        await deleteConversationApi(conversationId);
         setConversations(prev => prev.filter(c => c.id !== conversationId));
         
         if (activeConversation === conversationId) {
@@ -549,33 +552,32 @@ const handleSendMessage = async () => {
         <div className="p-4 sm:p-5 border-t border-gray-200/50 bg-white/95 backdrop-blur-sm flex-shrink-0">
           <div className="flex gap-2 items-end">
             {/* Voice Recorder */}
-              <VoiceRecorder 
-            ref={voiceRecorderRef}  // ✅ ربط الـ ref
-            onRecordingComplete={handleVoiceRecordingComplete} 
-          /> 
+            <VoiceRecorder 
+              ref={voiceRecorderRef}
+              onRecordingComplete={handleVoiceRecordingComplete}
+            />
             
- <div className="flex-1 relative">
-  <textarea
-    ref={inputRef}
-    value={inputMessage}
-    onChange={(e) => {
-      setInputMessage(e.target.value);
-      // Auto-resize based on content
-      e.target.style.height = 'auto';
-      e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
-    }}
-    onKeyPress={handleKeyPress}
-    placeholder="Ask me anything about courses, registration, or academic guidance..."
-    className="w-full input-field resize-none py-2 px-4 text-sm rounded-md border-gray-200 focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-all duration-200"
-    rows={1}
-    disabled={isLoading}
-    style={{ 
-      minHeight: '44px',
-      maxHeight: '100px',
-      overflowY: 'auto'
-    }}
-  />
-</div>
+            <div className="flex-1 relative">
+              <textarea
+                ref={inputRef}
+                value={inputMessage}
+                onChange={(e) => {
+                  setInputMessage(e.target.value);
+                  e.target.style.height = 'auto';
+                  e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
+                }}
+                onKeyPress={handleKeyPress}
+                placeholder="Ask me anything about courses, registration, or academic guidance..."
+                className="w-full input-field resize-none py-2 px-4 text-sm rounded-md border-gray-200 focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-all duration-200"
+                rows={1}
+                disabled={isLoading}
+                style={{ 
+                  minHeight: '44px',
+                  maxHeight: '100px',
+                  overflowY: 'auto'
+                }}
+              />
+            </div>
             <button
               onClick={handleSendMessage}
               disabled={(!inputMessage.trim() && !audioMessage) || isLoading}
@@ -589,14 +591,6 @@ const handleSendMessage = async () => {
               <span className="hidden sm:inline font-medium">Send</span>
             </button>
           </div>
-          
-          {/* Audio message indicator */}
-          {/* {audioMessage && (
-            <div className="mt-2 text-sm text-green-600 bg-green-50 rounded-lg p-2 flex items-center gap-2">
-              <FaMicrophone />
-              <span>Voice message recorded. Click send to share.</span>
-            </div>
-          )} */}
           
           {/* Suggested Questions */}
           <div className="grid grid-cols-2 gap-2 mt-4">
