@@ -47,6 +47,8 @@ export const markMessageAsRead = (messageId) => api.put(`/Chat/messages/${messag
 export const searchMessages = (query) => api.get(`/Chat/messages/search?q=${query}`);
 export const sendToAdvisor = (message) => api.post('/Chat/send-to-advisor', { message });
 export const getAdvisorMessages = () => api.get('/Chat/advisor-messages');
+export const getStudentAdvisorMessages = () => api.get('/Chat/advisor-messages');
+export const sendMessageToAdvisor = (message) => api.post('/Chat/send-to-advisor', { message });
 
 // ==================== USER ====================
 export const getProfile = () => api.get('/User/profile');

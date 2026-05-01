@@ -1,6 +1,6 @@
 // src/components/Student/RegulationsView.jsx
 import { useState, useEffect } from 'react';
-import { getRegulations } from '../../services/api';
+import { getRegulations } from '../../services/api';  // ✅ نفس الـ API
 import { FaSearch, FaBook, FaGraduationCap, FaCalendarAlt, FaGavel, FaQuestionCircle } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,7 @@ const RegulationsView = () => {
     const fetchRegulations = async () => {
       try {
         const response = await getRegulations();
+        console.log('Regulations fetched:', response.data);
         setRegulations(response.data || []);
       } catch (err) {
         console.error('Error fetching regulations:', err);
@@ -121,6 +122,7 @@ const RegulationsView = () => {
         <div className="text-center py-12 text-gray-500 bg-white rounded-xl">
           <FaBook className="mx-auto text-3xl mb-2 opacity-30" />
           <p>No regulations found</p>
+          <p className="text-xs mt-1">Check back later for academic policies</p>
         </div>
       ) : (
         <div className="space-y-4">
