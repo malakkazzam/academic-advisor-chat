@@ -1,6 +1,5 @@
 // src/components/Student/AdvisorMessages.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getConversations, getConversation, sendToAdvisor } from '../../services/api';
 import { FaUserTie, FaPaperPlane, FaSpinner, FaCommentDots } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -23,58 +22,51 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ جلب محادثة المشرف من conversations
   const fetchAdvisorConversation = useCallback(async () => {
     if (!isMounted.current) return;
     
     try {
-      const response = await getConversations();
-      const allConversations = response.data || [];
+      const token = localStorage.getItem('token');
       
-      // جيب محادثة المشرف (اللي عنوانها فيه advisor)
+      const convsRes = await fetch('https://siraj.runasp.net/api/Chat/conversations', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const allConversations = await convsRes.json();
+      
       const advisorConv = allConversations.find(conv => 
         conv.title === 'محادثة مع المشرف الأكاديمي' ||
-        conv.title?.toLowerCase().includes('advisor') ||
-        conv.type === 'advisor'
+        conv.title?.toLowerCase().includes('advisor')
       );
       
-      if (advisorConv && advisorConv.id) {
+      if (advisorConv?.id) {
         setAdvisorConversationId(advisorConv.id);
-        const convDetail = await getConversation(advisorConv.id);
-        if (isMounted.current) {
-          setMessages(convDetail.data?.messages || []);
-        }
+        
+        const msgRes = await fetch(`https://siraj.runasp.net/api/Chat/conversations/${advisorConv.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const convDetail = await msgRes.json();
+        
+        setMessages(convDetail.messages || []);
       } else {
         setMessages([]);
       }
     } catch (err) {
       console.error('Error fetching advisor conversation:', err);
-      if (isMounted.current && !loading) {
-        toast.error('Failed to load messages');
-      }
     } finally {
-      if (isMounted.current) {
-        setLoading(false);
-      }
+      if (isMounted.current) setLoading(false);
     }
-  }, [loading]);
+  }, []);
 
-  // ✅ useEffect للتحميل الأولي
   useEffect(() => {
     isMounted.current = true;
     
     if (!hasInitialized.current) {
       hasInitialized.current = true;
-      const loadMessages = async () => {
-        await fetchAdvisorConversation();
-      };
-      loadMessages();
+      fetchAdvisorConversation();
     }
     
     intervalRef.current = setInterval(() => {
-      if (isMounted.current) {
-        fetchAdvisorConversation();
-      }
+      if (isMounted.current) fetchAdvisorConversation();
     }, 30000);
     
     return () => {
@@ -83,7 +75,6 @@ const AdvisorMessages = () => {
     };
   }, [fetchAdvisorConversation]);
 
-  // ✅ handleSendMessage - هنا مكانها
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
@@ -91,9 +82,9 @@ const AdvisorMessages = () => {
     const messageText = inputMessage;
     setInputMessage('');
 
-    // إضافة الرسالة محلياً
+    const tempId = Date.now();
     const newMessage = {
-      id: Date.now(),
+      id: tempId,
       content: messageText,
       sender: 'Student',
       senderId: 'student',
@@ -104,23 +95,29 @@ const AdvisorMessages = () => {
     scrollToBottom();
 
     try {
-      // إرسال الرسالة للـ API
-      await sendToAdvisor(messageText);
+      const token = localStorage.getItem('token');
       
-      toast.success('Message sent to advisor');
+      const sendRes = await fetch('https://siraj.runasp.net/api/Chat/send-to-advisor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: messageText })
+      });
       
-      // ✅ بعد الإرسال، جيب المحادثة المحدثة (عشان تظهر رسالة الطالب)
-      setTimeout(() => {
-        if (isMounted.current) {
-          fetchAdvisorConversation();
-        }
-      }, 500);
-      
+      if (sendRes.ok) {
+        toast.success('Message sent to advisor');
+        setTimeout(() => {
+          if (isMounted.current) fetchAdvisorConversation();
+        }, 500);
+      } else {
+        throw new Error('Failed to send');
+      }
     } catch (err) {
       console.error('Error sending message:', err);
       toast.error('Failed to send message');
-      // لو فشلت، نشيل الرسالة اللي ضفناها
-      setMessages(prev => prev.filter(msg => msg.id !== newMessage.id));
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
       setInputMessage(messageText);
     } finally {
       setSending(false);
@@ -149,7 +146,6 @@ const AdvisorMessages = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 sm:px-6 py-4 flex items-center gap-3 shadow-md">
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
           <FaUserTie className="text-white text-lg" />
@@ -160,7 +156,6 @@ const AdvisorMessages = () => {
         </div>
       </div>
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
@@ -190,7 +185,6 @@ const AdvisorMessages = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="p-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="flex gap-2">
           <textarea
