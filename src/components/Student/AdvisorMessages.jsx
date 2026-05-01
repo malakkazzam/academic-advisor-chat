@@ -19,29 +19,32 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ دالة جلب المحادثة - بسطة بدون useCallback
+  // ✅ استخدام /api بدل الرابط الكامل
   const loadConversation = () => {
     const token = localStorage.getItem('token');
     
-    // 1. جيب كل المحادثات
-    fetch('https://siraj.runasp.net/api/Chat/conversations', {
+    fetch('/api/Chat/conversations', {
       headers: { 'Authorization': `Bearer ${token}` }
     })
     .then(res => res.json())
     .then(conversations => {
-      // 2. دور على محادثة المشرف
+      console.log('All conversations:', conversations);
+      
+      // دور على محادثة المشرف
       const advisorConv = conversations.find(c => 
         c.title === 'محادثة مع المشرف الأكاديمي' || 
-        (c.title && c.title.includes('advisor'))
+        (c.title && c.title.toLowerCase().includes('advisor'))
       );
       
       if (advisorConv && advisorConv.id) {
-        // 3. جيب رسايل المحادثة
-        fetch(`https://siraj.runasp.net/api/Chat/conversations/${advisorConv.id}`, {
+        console.log('Advisor conversation found:', advisorConv.id);
+        // جيب رسايل المحادثة
+        fetch(`/api/Chat/conversations/${advisorConv.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(res => res.json())
         .then(convData => {
+          console.log('Messages:', convData.messages);
           setMessages(convData.messages || []);
           setLoading(false);
         })
@@ -50,6 +53,7 @@ const AdvisorMessages = () => {
           setLoading(false);
         });
       } else {
+        console.log('No advisor conversation found');
         setMessages([]);
         setLoading(false);
       }
@@ -60,11 +64,9 @@ const AdvisorMessages = () => {
     });
   };
 
-  // ✅ تشغيل loadConversation مرة واحدة عند التحميل
   useEffect(() => {
     loadConversation();
     
-    // تحديث كل 30 ثانية
     intervalRef.current = setInterval(() => {
       loadConversation();
     }, 30000);
@@ -74,7 +76,6 @@ const AdvisorMessages = () => {
     };
   }, []);
 
-  // ✅ إرسال رسالة
   const sendMessage = () => {
     if (!inputMessage.trim() || sending) return;
 
@@ -82,7 +83,6 @@ const AdvisorMessages = () => {
     const text = inputMessage;
     setInputMessage('');
 
-    // إضافة الرسالة محلياً مؤقتاً
     const tempMsg = {
       id: Date.now(),
       content: text,
@@ -95,7 +95,8 @@ const AdvisorMessages = () => {
 
     const token = localStorage.getItem('token');
     
-    fetch('https://siraj.runasp.net/api/Chat/send-to-advisor', {
+    // ✅ استخدام /api بدل الرابط الكامل
+    fetch('/api/Chat/send-to-advisor', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -105,8 +106,7 @@ const AdvisorMessages = () => {
     })
     .then(res => {
       if (res.ok) {
-        toast.success('Message sent');
-        // جلب الرسائل مرة تانيه
+        toast.success('Message sent to advisor');
         setTimeout(() => loadConversation(), 500);
       } else {
         throw new Error('Send failed');
@@ -138,7 +138,6 @@ const AdvisorMessages = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-4 flex items-center gap-3 shadow-md">
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
           <FaUserTie className="text-white text-lg" />
@@ -149,7 +148,6 @@ const AdvisorMessages = () => {
         </div>
       </div>
 
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="text-center text-gray-400 py-12">
@@ -159,7 +157,7 @@ const AdvisorMessages = () => {
           </div>
         ) : (
           messages.map((msg, idx) => {
-            const isAdvisor = msg.sender === 'Advisor' || msg.senderId === 'advisor';
+            const isAdvisor = msg.sender === 'Advisor' || msg.senderId === 'advisor' || msg.sender === 'advisor';
             return (
               <div key={msg.id || idx} className={`flex ${isAdvisor ? 'justify-start' : 'justify-end'}`}>
                 <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${isAdvisor ? 'bg-purple-600 text-white' : 'bg-white border border-gray-200'}`}>
@@ -175,7 +173,6 @@ const AdvisorMessages = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
       <div className="p-4 border-t bg-white">
         <div className="flex gap-2">
           <textarea
