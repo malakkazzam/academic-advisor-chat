@@ -1,104 +1,87 @@
 // src/services/api.js
 import axios from 'axios';
-import toast from 'react-hot-toast';
 
-const API_BASE_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' },
+  timeout: 30000,
 });
 
-// Request interceptor to add token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    console.log(`📤 API Request: ${config.method?.toUpperCase()} ${config.url}`, config.data);
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
+// Request interceptor
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
-);
+  return config;
+});
 
-// Response interceptor to handle errors
+// Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    console.log(`📥 API Response: ${response.status}`, response.data);
-    return response;
-  },
+  (response) => response,
   (error) => {
-    console.error(`❌ API Error:`, error.response?.status, error.response?.data);
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
-      toast.error('Session expired. Please login again.');
     }
     return Promise.reject(error);
   }
 );
 
 // ==================== AUTH ====================
-export const authAPI = {
-  login: (credentials) => api.post('/Auth/login', credentials),
-  register: (userData) => api.post('/Auth/register', userData),
-  forgotPassword: (email) => api.post('/Auth/forgot-password', { email }),
-  resetPassword: (data) => api.post('/Auth/reset-password', data),
-};
+export const login = (email, password) => api.post('/Auth/login', { email, password });
+export const register = (data) => api.post('/Auth/register', data);
+export const forgotPassword = (email) => api.post('/Auth/forgot-password', { email });
+export const resetPassword = (token, newPassword) => api.post('/Auth/reset-password', { token, newPassword });
 
 // ==================== CHAT ====================
-export const chatAPI = {
-  sendMessage: (data) => api.post('/Chat/send', {
-    Message: data.content,  
-    Type: data.type         
-  }),
-  getConversations: () => api.get('/Chat/conversations'),
-  getConversationById: (id) => api.get(`/Chat/conversations/${id}`),
-  markMessageAsRead: (id) => api.put(`/Chat/messages/${id}/read`),
-  deleteConversation: (id) => axios.post(`/api/Chat/conversations/${id}/delete`),
-};
+export const sendMessage = (data) => api.post('/Chat/send', data);
+export const getConversations = () => api.get('/Chat/conversations');
+export const getConversation = (id) => api.get(`/Chat/conversations/${id}`);
+export const deleteConversation = (id) => api.delete(`/Chat/conversations/${id}`);
+export const archiveConversation = (id) => api.put(`/Chat/conversations/${id}/archive`);
+export const markMessageAsRead = (messageId) => api.put(`/Chat/messages/${messageId}/read`);
+export const searchMessages = (query) => api.get(`/Chat/messages/search?q=${query}`);
+export const sendToAdvisor = (message) => api.post('/Chat/send-to-advisor', { message });
+export const getAdvisorMessages = () => api.get('/Chat/advisor-messages');
 
 // ==================== USER ====================
-export const userAPI = {
-  getProfile: () => api.get('/User/profile').catch(error => {
-  
-    if (error.response?.status === 404) {
-      console.debug('Profile endpoint not available (this is expected)');
-      return { data: null };
-    }
-    throw error;
-  }),
-  updateProfile: (data) => api.put('/User/profile', data),
-  changePassword: (data) => api.post('/User/change-password', data),
-};
+export const getProfile = () => api.get('/User/profile');
+export const updateProfile = (data) => api.put('/User/profile', data);
+export const changePassword = (oldPassword, newPassword) => api.post('/User/change-password', { oldPassword, newPassword });
+export const getUserStats = () => api.get('/User/stats');
 
 // ==================== ADMIN ====================
-export const adminAPI = {
-  getDashboard: () => api.get('/Admin/dashboard'),
-  getUsers: () => api.get('/Admin/users'),
-updateUser: (id, data) => api.put(`/Admin/user/${id}`, data),
-
-  toggleUserStatus: (id) => api.put(`/Admin/users/${id}/toggle-status`),
-  deleteUser: (id) => api.delete(`/Admin/users/${id}`),
-  getRegulations: () => api.get('/Admin/regulations'),
-  createRegulation: (data) => api.post('/Admin/regulations', data),
-  updateRegulation: (id, data) => api.put(`/Admin/regulations/${id}`, data),
-  deleteRegulation: (id) => api.delete(`/Admin/regulations/${id}`),
-  getAnalytics: () => api.get('/Admin/analytics'),
-};
+export const getDashboardStats = () => api.get('/Admin/dashboard');
+export const getAdminAnalytics = () => api.get('/Admin/analytics');
+export const getUsers = () => api.get('/Admin/users');
+export const toggleUserStatus = (userId) => api.put(`/Admin/users/${userId}/toggle-status`);
+export const deleteUser = (userId) => api.delete(`/Admin/users/${userId}`);
+export const updateUserRole = (userId, role) => api.put(`/Admin/users/${userId}/role`, { role });
+export const getRegulations = () => api.get('/Admin/regulations');
+export const getRegulationById = (id) => api.get(`/Admin/regulations/${id}`);
+export const createRegulation = (data) => api.post('/Admin/regulations', data);
+export const updateRegulation = (id, data) => api.put(`/Admin/regulations/${id}`, data);
+export const deleteRegulation = (id) => api.delete(`/Admin/regulations/${id}`);
+export const bulkImportRegulations = (data) => api.post('/Admin/regulations/bulk', data);
+export const exportRegulations = () => api.get('/Admin/regulations/export', { responseType: 'blob' });
 
 // ==================== ADVISOR ====================
-export const advisorAPI = {
-  getStudents: () => api.get('/Advisor/students'),
-  getStudentConversations: (id) => api.get(`/Advisor/students/${id}/conversations`),
-  sendMessageToStudent: (id, data) => api.post(`/Advisor/students/${id}/send-message`, data),
-  getAnalytics: () => api.get('/Advisor/analytics'),
-};
+export const getStudents = () => api.get('/Advisor/students');
+export const getStudentDetails = (studentId) => api.get(`/Advisor/students/${studentId}`);
+export const getStudentConversations = (studentId) => api.get(`/Advisor/students/${studentId}/conversations`);
+export const getAdvisorConversation = (conversationId) => api.get(`/Advisor/conversations/${conversationId}`);
+export const sendMessageToStudent = (studentId, message) => api.post(`/Advisor/students/${studentId}/send-message`, { message });
+export const getAdvisorAnalytics = () => api.get('/Advisor/analytics');
+export const getAdvisorStats = () => api.get('/Advisor/stats');
+export const toggleStudentStatus = (studentId) => api.put(`/Advisor/students/${studentId}/toggle-status`);
+
+// ==================== SYSTEM ====================
+export const getSystemHealth = () => api.get('/System/health');
+export const getSystemStats = () => api.get('/System/stats');
+export const getAuditLogs = (params) => api.get('/System/audit-logs', { params });
 
 export default api;
