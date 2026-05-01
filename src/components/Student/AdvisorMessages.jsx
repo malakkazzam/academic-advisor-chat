@@ -19,7 +19,6 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ استخدام /api بدل الرابط الكامل
   const loadConversation = () => {
     const token = localStorage.getItem('token');
     
@@ -28,23 +27,16 @@ const AdvisorMessages = () => {
     })
     .then(res => res.json())
     .then(conversations => {
-      console.log('All conversations:', conversations);
-      
-      // دور على محادثة المشرف
       const advisorConv = conversations.find(c => 
-        c.title === 'محادثة مع المشرف الأكاديمي' || 
-        (c.title && c.title.toLowerCase().includes('advisor'))
+        c.title === 'محادثة مع المشرف الأكاديمي'
       );
       
       if (advisorConv && advisorConv.id) {
-        console.log('Advisor conversation found:', advisorConv.id);
-        // جيب رسايل المحادثة
         fetch(`/api/Chat/conversations/${advisorConv.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(res => res.json())
         .then(convData => {
-          console.log('Messages:', convData.messages);
           setMessages(convData.messages || []);
           setLoading(false);
         })
@@ -53,7 +45,6 @@ const AdvisorMessages = () => {
           setLoading(false);
         });
       } else {
-        console.log('No advisor conversation found');
         setMessages([]);
         setLoading(false);
       }
@@ -95,7 +86,6 @@ const AdvisorMessages = () => {
 
     const token = localStorage.getItem('token');
     
-    // ✅ استخدام /api بدل الرابط الكامل
     fetch('/api/Chat/send-to-advisor', {
       method: 'POST',
       headers: {
