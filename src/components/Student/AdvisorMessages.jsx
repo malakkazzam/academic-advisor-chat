@@ -8,11 +8,8 @@ const AdvisorMessages = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
-  const [ setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const intervalRef = useRef(null);
-  const isMounted = useRef(true);
-  const isFetching = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,84 +19,70 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ دالة جلب المحادثة
-  const loadConversation = async () => {
-    if (!isMounted.current || isFetching.current) return;
+  // ✅ دالة جلب المحادثة - بسطة بدون useCallback
+  const loadConversation = () => {
+    const token = localStorage.getItem('token');
     
-    isFetching.current = true;
-    
-    try {
-      const token = localStorage.getItem('token');
-      
-      // 1. جيب كل المحادثات
-      const convRes = await fetch('https://siraj.runasp.net/api/Chat/conversations', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const conversations = await convRes.json();
-      
+    // 1. جيب كل المحادثات
+    fetch('https://siraj.runasp.net/api/Chat/conversations', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    .then(res => res.json())
+    .then(conversations => {
       // 2. دور على محادثة المشرف
       const advisorConv = conversations.find(c => 
         c.title === 'محادثة مع المشرف الأكاديمي' || 
-        (c.title && c.title.toLowerCase().includes('advisor'))
+        (c.title && c.title.includes('advisor'))
       );
       
-      if (advisorConv && isMounted.current) {
-        setConversationId(advisorConv.id);
-        
+      if (advisorConv && advisorConv.id) {
         // 3. جيب رسايل المحادثة
-        const msgRes = await fetch(`https://siraj.runasp.net/api/Chat/conversations/${advisorConv.id}`, {
+        fetch(`https://siraj.runasp.net/api/Chat/conversations/${advisorConv.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const convData = await msgRes.json();
-        
-        if (isMounted.current) {
+        })
+        .then(res => res.json())
+        .then(convData => {
           setMessages(convData.messages || []);
-        }
-      } else if (isMounted.current) {
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error('Error fetching messages:', err);
+          setLoading(false);
+        });
+      } else {
         setMessages([]);
-      }
-    } catch (err) {
-      console.error('Error loading conversation:', err);
-    } finally {
-      if (isMounted.current) {
         setLoading(false);
-        isFetching.current = false;
       }
-    }
+    })
+    .catch(err => {
+      console.error('Error fetching conversations:', err);
+      setLoading(false);
+    });
   };
 
-  // ✅ useEffect الآمن
+  // ✅ تشغيل loadConversation مرة واحدة عند التحميل
   useEffect(() => {
-    isMounted.current = true;
-    
-    // التنفيذ الأولي بشكل غير متزامن
-    const init = async () => {
-      await loadConversation();
-    };
-    init();
+    loadConversation();
     
     // تحديث كل 30 ثانية
     intervalRef.current = setInterval(() => {
-      if (isMounted.current) {
-        loadConversation();
-      }
+      loadConversation();
     }, 30000);
     
     return () => {
-      isMounted.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []); // ✅ مصفوفة dependencies فاضية
+  }, []);
 
   // ✅ إرسال رسالة
-  const sendMessage = async () => {
+  const sendMessage = () => {
     if (!inputMessage.trim() || sending) return;
 
     setSending(true);
     const text = inputMessage;
     setInputMessage('');
 
-    // إضافة الرسالة محلياً
+    // إضافة الرسالة محلياً مؤقتاً
     const tempMsg = {
       id: Date.now(),
       content: text,
@@ -110,36 +93,34 @@ const AdvisorMessages = () => {
     setMessages(prev => [...prev, tempMsg]);
     scrollToBottom();
 
-    try {
-      const token = localStorage.getItem('token');
-      
-      const res = await fetch('https://siraj.runasp.net/api/Chat/send-to-advisor', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ message: text })
-      });
-      
+    const token = localStorage.getItem('token');
+    
+    fetch('https://siraj.runasp.net/api/Chat/send-to-advisor', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ message: text })
+    })
+    .then(res => {
       if (res.ok) {
         toast.success('Message sent');
-        // جلب الرسائل مرة تانيه عشان ناخد الـ id الحقيقي
-        setTimeout(() => {
-          if (isMounted.current) loadConversation();
-        }, 500);
+        // جلب الرسائل مرة تانيه
+        setTimeout(() => loadConversation(), 500);
       } else {
         throw new Error('Send failed');
       }
-    } catch (err) {
+    })
+    .catch(err => {
       console.error('Error sending message:', err);
       toast.error('Failed to send message');
-      // نشيل الرسالة المؤقتة
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
       setInputMessage(text);
-    } finally {
+    })
+    .finally(() => {
       setSending(false);
-    }
+    });
   };
 
   const formatTime = (date) => {
