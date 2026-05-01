@@ -15,6 +15,8 @@ import Profile from './components/User/Profile';
 import Header from './components/Layout/Header';
 import Sidebar from './components/Layout/Sidebar';
 import AdvisorAnalytics from './components/Advisor/AdvisorAnalytics';
+import RegulationsView from './components/Student/RegulationsView';
+
 import { FaBars } from 'react-icons/fa';
 
 const AppContent = () => {
@@ -150,6 +152,16 @@ const AppContent = () => {
                   </ProtectedRoute>
                 }
               />
+
+             <Route
+             path="/regulations"
+                 element={
+               <ProtectedRoute>
+                <RegulationsView />
+               </ProtectedRoute>
+                }
+                    />
+
               <Route
                 path="/advisor/analytics"
                 element={

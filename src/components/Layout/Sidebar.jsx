@@ -2,7 +2,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { FaHome, FaRobot, FaUser, FaUsers, FaBook, FaChartLine, FaTimes } from 'react-icons/fa';
+import { FaHome, FaRobot, FaUser, FaUsers, FaBook, FaChartLine, FaTimes, FaGavel } from 'react-icons/fa';
 
 const Sidebar = ({ onClose }) => {
   const { user } = useAuth();
@@ -23,6 +23,7 @@ const Sidebar = ({ onClose }) => {
       case 'student':
         return [
           { path: '/chat', label: 'AI Assistant', icon: FaRobot },
+          { path: '/regulations', label: 'Regulations', icon: FaGavel },  // ✅ أضيفي Regulations للطالب
           { path: '/profile', label: 'Profile', icon: FaUser },
         ];
       default:
