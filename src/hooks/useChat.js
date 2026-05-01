@@ -19,10 +19,8 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   
-  // ✅ useRef عشان نشغل التحميل مرة واحدة فقط
   const hasLoaded = useRef(false);
 
-  // ✅ loadConversations مستقرة (dependencies فاضية)
   const loadConversations = useCallback(async () => {
     if (isLoading) return;
     
@@ -36,9 +34,8 @@ export const useChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []); // ✅ empty dependencies
+  }, []);
 
-  // ✅ loadConversation مستقرة
   const loadConversation = useCallback(async (id) => {
     try {
       setIsLoading(true);
@@ -53,7 +50,6 @@ export const useChat = () => {
     }
   }, []);
 
-  // ✅ sendNewMessage
   const sendNewMessage = useCallback(async (text, isVoice = false, voiceData = null) => {
     if (!text.trim() && !isVoice) return false;
     
@@ -89,7 +85,6 @@ export const useChat = () => {
     }
   }, [currentConversation, loadConversations]);
 
-  // ✅ sendMessageToAdvisor
   const sendMessageToAdvisor = useCallback(async (message) => {
     try {
       const response = await sendToAdvisor(message);
@@ -102,7 +97,6 @@ export const useChat = () => {
     }
   }, []);
 
-  // ✅ loadAdvisorMessages
   const loadAdvisorMessages = useCallback(async () => {
     try {
       const response = await getAdvisorMessages();
@@ -113,7 +107,7 @@ export const useChat = () => {
     }
   }, []);
 
-  // ✅ deleteChat
+  // ✅ deleteChat - باستخدام DELETE method
   const deleteChat = useCallback(async (conversationId) => {
     try {
       await deleteConversation(conversationId);
@@ -129,7 +123,6 @@ export const useChat = () => {
     }
   }, [loadConversations, currentConversation]);
 
-  // ✅ archiveChat
   const archiveChat = useCallback(async (conversationId) => {
     try {
       await archiveConversation(conversationId);
@@ -141,19 +134,16 @@ export const useChat = () => {
     }
   }, [loadConversations]);
 
-  // ✅ createNewChat
   const createNewChat = useCallback(() => {
     setCurrentConversation(null);
     setMessages([]);
   }, []);
 
-  // ✅ selectConversation
   const selectConversation = useCallback(async (conversation) => {
     setCurrentConversation(conversation);
     await loadConversation(conversation.id);
   }, [loadConversation]);
 
-  // ✅ useEffect الآمن 100% - بيشتغل مرة واحدة بس
   useEffect(() => {
     if (!hasLoaded.current) {
       hasLoaded.current = true;

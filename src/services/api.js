@@ -41,7 +41,7 @@ export const resetPassword = (token, newPassword) => api.post('/Auth/reset-passw
 export const sendMessage = (data) => api.post('/Chat/send', data);
 export const getConversations = () => api.get('/Chat/conversations');
 export const getConversation = (id) => api.get(`/Chat/conversations/${id}`);
-export const deleteConversation = (id) => api.delete(`/Chat/conversations/${id}`);
+export const deleteConversation = (id) => api.delete(`/Chat/conversations/${id}`); // ✅ DELETE method
 export const archiveConversation = (id) => api.put(`/Chat/conversations/${id}/archive`);
 export const markMessageAsRead = (messageId) => api.put(`/Chat/messages/${messageId}/read`);
 export const searchMessages = (query) => api.get(`/Chat/messages/search?q=${query}`);

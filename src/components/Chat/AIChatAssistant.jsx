@@ -106,6 +106,7 @@ const AIChatAssistant = () => {
     return `msg-${Date.now()}-${messageIdCounter.current}`;
   };
 
+  // ✅ handleSendMessage المعدلة
   const handleSendMessage = async () => {
     if ((!inputMessage.trim() && !audioMessage) || isLoading) return;
 
@@ -135,16 +136,11 @@ const AIChatAssistant = () => {
     setIsLoading(true);
     setIsTyping(true);
 
-    console.log('📤 Sending message:', { content: currentMessage, type: audioMessage ? 'audio' : 'text' });
-
     try {
       const response = await sendMessageApi({
         content: currentMessage,
         type: audioMessage ? 'audio' : 'text'
       });
-      
-      console.log('📥 Full response:', response);
-      console.log('📥 Response data:', response.data);
       
       let aiResponse = "Thank you for your message.";
       
@@ -160,8 +156,6 @@ const AIChatAssistant = () => {
         aiResponse = response.data;
       }
       
-      console.log('🤖 AI Response:', aiResponse);
-      
       const aiMessage = {
         id: generateId(),
         role: 'assistant',
@@ -174,16 +168,11 @@ const AIChatAssistant = () => {
       setMessages(prev => [...prev, aiMessage]);
       
     } catch (error) {
-      console.error('❌ Error details:', error);
-      console.error('❌ Error response:', error.response?.data);
-      console.error('❌ Error status:', error.response?.status);
-      
-      let errorText = "⚠️ Connection error occurred.\n\nPlease try again.";
-      
+      console.error('Error sending message:', error);
       const errorMessage = {
         id: generateId(),
         role: 'assistant',
-        content: errorText,
+        content: "⚠️ Connection error occurred.\n\nPlease try again.",
         timestamp: new Date(),
         feedback: null
       };
@@ -215,26 +204,24 @@ const AIChatAssistant = () => {
     }
   };
 
+  // ✅ loadConversation المعدلة
   const loadConversation = async (conversation) => {
     setActiveConversation(conversation.id);
     setIsLoadingHistory(true);
     
     try {
       const response = await getConversation(conversation.id);
-      console.log('Loaded conversation:', response.data);
       
-      const loadedMessages = (response.data.messages || []).map(msg => ({
+      const loadedMessages = (response.data?.messages || []).map(msg => ({
         id: msg.id,
-        role: msg.senderId === 'user' ? 'user' : 'assistant',
+        role: msg.sender === 'user' || msg.senderId === 'user' ? 'user' : 'assistant',
         content: msg.content,
-        timestamp: new Date(msg.createdAt),
+        timestamp: new Date(msg.createdAt || msg.timestamp),
         feedback: null
       }));
       
       if (loadedMessages.length > 0) {
         setMessages(loadedMessages);
-      } else {
-        toast.info('No messages in this conversation');
       }
       
       setShowHistory(false);
@@ -247,6 +234,7 @@ const AIChatAssistant = () => {
     }
   };
 
+  // ✅ deleteConversation المعدلة - باستخدام DELETE method
   const deleteConversation = async (conversationId, e) => {
     e.stopPropagation();
     
@@ -411,7 +399,6 @@ const AIChatAssistant = () => {
         {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0 shadow-md">
           <div className="flex items-center gap-3">
-            {/* Button to show chat history */}
             <button
               onClick={() => setShowHistory(!showHistory)}
               className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200 text-white"
@@ -462,7 +449,6 @@ const AIChatAssistant = () => {
             >
               <div className={`flex gap-3 max-w-[90%] sm:max-w-[80%] lg:max-w-[70%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
                 
-                {/* Avatar */}
                 <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
                   message.role === 'user' 
                     ? 'bg-gradient-to-br from-emerald-500 to-teal-600' 
@@ -475,7 +461,6 @@ const AIChatAssistant = () => {
                   )}
                 </div>
                 
-                {/* Message Bubble */}
                 <div className="group relative">
                   <div className={`rounded-2xl px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md ${
                     message.role === 'user'
@@ -492,7 +477,6 @@ const AIChatAssistant = () => {
                     </div>
                   </div>
                   
-                  {/* Action Buttons for AI messages */}
                   {message.role === 'assistant' && (
                     <div className="absolute -bottom-7 right-0 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-1 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm">
                       <button
@@ -527,7 +511,6 @@ const AIChatAssistant = () => {
             </div>
           ))}
           
-          {/* Typing Indicator */}
           {isTyping && (
             <div className="flex justify-start animate-fade-in">
               <div className="flex gap-3">
@@ -551,7 +534,6 @@ const AIChatAssistant = () => {
         {/* Input Area */}
         <div className="p-4 sm:p-5 border-t border-gray-200/50 bg-white/95 backdrop-blur-sm flex-shrink-0">
           <div className="flex gap-2 items-end">
-            {/* Voice Recorder */}
             <VoiceRecorder 
               ref={voiceRecorderRef}
               onRecordingComplete={handleVoiceRecordingComplete}
@@ -592,7 +574,6 @@ const AIChatAssistant = () => {
             </button>
           </div>
           
-          {/* Suggested Questions */}
           <div className="grid grid-cols-2 gap-2 mt-4">
             {suggestedQuestions.map((q, index) => {
               const colors = [
