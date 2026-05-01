@@ -57,40 +57,47 @@ const StudentChatView = () => {
   }, [studentId]);
 
   // ✅ Modified: send message as plain string (not object)
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || sending) return;
+ const handleSendMessage = async () => {
+  if (!inputMessage.trim() || sending) return;
+  
+  setSending(true);
+  
+  try {
+    const token = localStorage.getItem('token');
     
-    setSending(true);
+    // ✅ استخدمي fetch مباشرة
+    const response = await fetch(`https://siraj.runasp.net/api/Advisor/students/${studentId}/send-message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(inputMessage)  // ✅ string مباشرة
+    });
     
-    try {
-      // ✅ Send message as plain string, not as object
-       await advisorAPI.sendMessageToStudent(studentId, inputMessage);
-
+    if (response.ok) {
+      const newMessage = {
+        id: Date.now(),
+        content: inputMessage,
+        senderId: 'advisor',
+        sender: 'Advisor',
+        timestamp: new Date().toISOString()
+      };
       
-      if (isMounted.current) {
-        // Add the new message to the list
-        const newMessage = {
-          id: Date.now(),
-          content: inputMessage,
-          senderId: 'advisor',
-          sender: 'Advisor',
-          timestamp: new Date().toISOString()
-        };
-        
-        setMessages(prev => [...prev, newMessage]);
-        setInputMessage('');
-        toast.success('Message sent');
-        setTimeout(scrollToBottom, 100);
-      }
-    } catch (err) {
-      console.error('Error sending message:', err);
+      setMessages(prev => [...prev, newMessage]);
+      setInputMessage('');
+      toast.success('Message sent');
+      setTimeout(scrollToBottom, 100);
+    } else {
       toast.error('Failed to send message');
-    } finally {
-      if (isMounted.current) {
-        setSending(false);
-      }
     }
-  };
+  } catch (err) {
+    console.error('Error sending message:', err);
+    toast.error('Failed to send message');
+  } finally {
+    setSending(false);
+  }
+};
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
