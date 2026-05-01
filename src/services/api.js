@@ -45,10 +45,13 @@ export const deleteConversation = (id) => api.delete(`/Chat/conversations/${id}`
 export const archiveConversation = (id) => api.put(`/Chat/conversations/${id}/archive`);
 export const markMessageAsRead = (messageId) => api.put(`/Chat/messages/${messageId}/read`);
 export const searchMessages = (query) => api.get(`/Chat/messages/search?q=${query}`);
+
+// ✅ التعديل هنا - إرسال string مباشرة مش object
 export const sendToAdvisor = (message) => api.post('/Chat/send-to-advisor', message);
 export const getAdvisorMessages = () => api.get('/Chat/advisor-messages');
 export const getStudentAdvisorMessages = () => api.get('/Chat/advisor-messages');
 export const sendMessageToAdvisor = (message) => api.post('/Chat/send-to-advisor', message);
+
 
 // ==================== USER ====================
 export const getProfile = () => api.get('/User/profile');
