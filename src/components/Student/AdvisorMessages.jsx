@@ -13,7 +13,7 @@ const AdvisorMessages = () => {
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
   const intervalRef = useRef(null);
-  const hasInitialized = useRef(false); // ✅ لمنع التنفيذ المتكرر
+  const hasInitialized = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -23,47 +23,43 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
+  // ✅ جلب محادثة المشرف من conversations
   const fetchAdvisorConversation = useCallback(async () => {
-  if (!isMounted.current) return;
-  
-  try {
-    const response = await getConversations();
-    const allConversations = response.data || [];
+    if (!isMounted.current) return;
     
-    const advisorConvs = allConversations.filter(conv => 
-      conv.type === 'advisor' ||
-      conv.isAdvisor === true ||
-      conv.title?.toLowerCase().includes('advisor') ||
-      conv.title?.toLowerCase().includes('academic advisor') ||
-      conv.participantRole === 'advisor'
-    );
-    
-    if (advisorConvs.length > 0 && isMounted.current) {
-      setAdvisorConversationId(advisorConvs[0].id);
-      const convDetail = await getConversation(advisorConvs[0].id);
+    try {
+      const response = await getConversations();
+      const allConversations = response.data || [];
+      
+      // جيب محادثة المشرف (اللي عنوانها فيه advisor)
+      const advisorConv = allConversations.find(conv => 
+        conv.title === 'محادثة مع المشرف الأكاديمي' ||
+        conv.title?.toLowerCase().includes('advisor') ||
+        conv.type === 'advisor'
+      );
+      
+      if (advisorConv && advisorConv.id) {
+        setAdvisorConversationId(advisorConv.id);
+        const convDetail = await getConversation(advisorConv.id);
+        if (isMounted.current) {
+          setMessages(convDetail.data?.messages || []);
+        }
+      } else {
+        setMessages([]);
+      }
+    } catch (err) {
+      console.error('Error fetching advisor conversation:', err);
+      if (isMounted.current && !loading) {
+        toast.error('Failed to load messages');
+      }
+    } finally {
       if (isMounted.current) {
-        const serverMessages = convDetail.data?.messages || [];
-        
-        // ✅ دمج الرسائل بدل استبدالها
-        setMessages(prev => {
-          // خريطة للرسائل الموجودة (حسب id)
-          const existingIds = new Set(prev.map(m => m.id));
-          // أضف بس الرسائل الجديدة من السيرفر
-          const newMessages = serverMessages.filter(m => !existingIds.has(m.id));
-          return [...prev, ...newMessages];
-        });
+        setLoading(false);
       }
     }
-  } catch (err) {
-    console.error('Error fetching advisor conversation:', err);
-  } finally {
-    if (isMounted.current) {
-      setLoading(false);
-    }
-  }
-}, []);
+  }, [loading]);
 
-  // ✅ useEffect المعدل
+  // ✅ useEffect للتحميل الأولي
   useEffect(() => {
     isMounted.current = true;
     
@@ -87,6 +83,7 @@ const AdvisorMessages = () => {
     };
   }, [fetchAdvisorConversation]);
 
+  // ✅ handleSendMessage - هنا مكانها
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
@@ -94,29 +91,35 @@ const AdvisorMessages = () => {
     const messageText = inputMessage;
     setInputMessage('');
 
+    // إضافة الرسالة محلياً
     const newMessage = {
       id: Date.now(),
       content: messageText,
       sender: 'Student',
       senderId: 'student',
       timestamp: new Date().toISOString(),
-      isLocal: true
+      isPending: true
     };
     setMessages(prev => [...prev, newMessage]);
     scrollToBottom();
 
     try {
+      // إرسال الرسالة للـ API
       await sendToAdvisor(messageText);
+      
       toast.success('Message sent to advisor');
       
+      // ✅ بعد الإرسال، جيب المحادثة المحدثة (عشان تظهر رسالة الطالب)
       setTimeout(() => {
         if (isMounted.current) {
           fetchAdvisorConversation();
         }
-      }, 1000);
+      }, 500);
+      
     } catch (err) {
       console.error('Error sending message:', err);
       toast.error('Failed to send message');
+      // لو فشلت، نشيل الرسالة اللي ضفناها
       setMessages(prev => prev.filter(msg => msg.id !== newMessage.id));
       setInputMessage(messageText);
     } finally {
@@ -146,6 +149,7 @@ const AdvisorMessages = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 sm:px-6 py-4 flex items-center gap-3 shadow-md">
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
           <FaUserTie className="text-white text-lg" />
@@ -156,6 +160,7 @@ const AdvisorMessages = () => {
         </div>
       </div>
 
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
@@ -185,6 +190,7 @@ const AdvisorMessages = () => {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Input Area */}
       <div className="p-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="flex gap-2">
           <textarea
