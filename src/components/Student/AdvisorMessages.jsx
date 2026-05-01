@@ -1,5 +1,5 @@
 // src/components/Student/AdvisorMessages.jsx
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { FaUserTie, FaPaperPlane, FaSpinner, FaCommentDots } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -8,11 +8,11 @@ const AdvisorMessages = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
-  const [ setAdvisorConversationId] = useState(null);
+  const [ setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
-  const isMounted = useRef(true);
   const intervalRef = useRef(null);
-  const hasInitialized = useRef(false);
+  const isMounted = useRef(true);
+  const isFetching = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,112 +22,123 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  const fetchAdvisorConversation = useCallback(async () => {
-    if (!isMounted.current) return;
+  // ✅ دالة جلب المحادثة
+  const loadConversation = async () => {
+    if (!isMounted.current || isFetching.current) return;
+    
+    isFetching.current = true;
     
     try {
       const token = localStorage.getItem('token');
       
-      const convsRes = await fetch('https://siraj.runasp.net/api/Chat/conversations', {
+      // 1. جيب كل المحادثات
+      const convRes = await fetch('https://siraj.runasp.net/api/Chat/conversations', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const allConversations = await convsRes.json();
+      const conversations = await convRes.json();
       
-      const advisorConv = allConversations.find(conv => 
-        conv.title === 'محادثة مع المشرف الأكاديمي' ||
-        conv.title?.toLowerCase().includes('advisor')
+      // 2. دور على محادثة المشرف
+      const advisorConv = conversations.find(c => 
+        c.title === 'محادثة مع المشرف الأكاديمي' || 
+        (c.title && c.title.toLowerCase().includes('advisor'))
       );
       
-      if (advisorConv?.id) {
-        setAdvisorConversationId(advisorConv.id);
+      if (advisorConv && isMounted.current) {
+        setConversationId(advisorConv.id);
         
+        // 3. جيب رسايل المحادثة
         const msgRes = await fetch(`https://siraj.runasp.net/api/Chat/conversations/${advisorConv.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const convDetail = await msgRes.json();
+        const convData = await msgRes.json();
         
-        setMessages(convDetail.messages || []);
-      } else {
+        if (isMounted.current) {
+          setMessages(convData.messages || []);
+        }
+      } else if (isMounted.current) {
         setMessages([]);
       }
     } catch (err) {
-      console.error('Error fetching advisor conversation:', err);
+      console.error('Error loading conversation:', err);
     } finally {
-      if (isMounted.current) setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+        isFetching.current = false;
+      }
     }
-  }, []);
+  };
 
+  // ✅ useEffect الآمن
   useEffect(() => {
     isMounted.current = true;
     
-    if (!hasInitialized.current) {
-      hasInitialized.current = true;
-      fetchAdvisorConversation();
-    }
+    // التنفيذ الأولي بشكل غير متزامن
+    const init = async () => {
+      await loadConversation();
+    };
+    init();
     
+    // تحديث كل 30 ثانية
     intervalRef.current = setInterval(() => {
-      if (isMounted.current) fetchAdvisorConversation();
+      if (isMounted.current) {
+        loadConversation();
+      }
     }, 30000);
     
     return () => {
       isMounted.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchAdvisorConversation]);
+  }, []); // ✅ مصفوفة dependencies فاضية
 
-  const handleSendMessage = async () => {
+  // ✅ إرسال رسالة
+  const sendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
     setSending(true);
-    const messageText = inputMessage;
+    const text = inputMessage;
     setInputMessage('');
 
-    const tempId = Date.now();
-    const newMessage = {
-      id: tempId,
-      content: messageText,
+    // إضافة الرسالة محلياً
+    const tempMsg = {
+      id: Date.now(),
+      content: text,
       sender: 'Student',
-      senderId: 'student',
       timestamp: new Date().toISOString(),
-      isPending: true
+      temp: true
     };
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => [...prev, tempMsg]);
     scrollToBottom();
 
     try {
       const token = localStorage.getItem('token');
       
-      const sendRes = await fetch('https://siraj.runasp.net/api/Chat/send-to-advisor', {
+      const res = await fetch('https://siraj.runasp.net/api/Chat/send-to-advisor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ message: messageText })
+        body: JSON.stringify({ message: text })
       });
       
-      if (sendRes.ok) {
-        toast.success('Message sent to advisor');
+      if (res.ok) {
+        toast.success('Message sent');
+        // جلب الرسائل مرة تانيه عشان ناخد الـ id الحقيقي
         setTimeout(() => {
-          if (isMounted.current) fetchAdvisorConversation();
+          if (isMounted.current) loadConversation();
         }, 500);
       } else {
-        throw new Error('Failed to send');
+        throw new Error('Send failed');
       }
     } catch (err) {
       console.error('Error sending message:', err);
       toast.error('Failed to send message');
-      setMessages(prev => prev.filter(msg => msg.id !== tempId));
-      setInputMessage(messageText);
+      // نشيل الرسالة المؤقتة
+      setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
+      setInputMessage(text);
     } finally {
       setSending(false);
-    }
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
     }
   };
 
@@ -146,37 +157,35 @@ const AdvisorMessages = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-50 to-gray-100">
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 sm:px-6 py-4 flex items-center gap-3 shadow-md">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-4 flex items-center gap-3 shadow-md">
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
           <FaUserTie className="text-white text-lg" />
         </div>
         <div>
-          <h2 className="font-semibold text-white text-base sm:text-lg">Academic Advisor</h2>
+          <h2 className="font-semibold text-white">Academic Advisor</h2>
           <p className="text-white/70 text-xs">Typically responds within 24 hours</p>
         </div>
       </div>
 
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
-            <FaCommentDots className="text-5xl mb-3 opacity-30" />
-            <p className="text-sm">No messages yet</p>
+          <div className="text-center text-gray-400 py-12">
+            <FaCommentDots className="text-5xl mx-auto mb-3 opacity-30" />
+            <p>No messages yet</p>
             <p className="text-xs">Send a message to your academic advisor</p>
           </div>
         ) : (
-          messages.map((msg, index) => {
+          messages.map((msg, idx) => {
             const isAdvisor = msg.sender === 'Advisor' || msg.senderId === 'advisor';
             return (
-              <div key={msg.id || index} className={`flex ${isAdvisor ? 'justify-start' : 'justify-end'}`}>
-                <div className={`max-w-[80%] ${isAdvisor ? 'items-start' : 'items-end'}`}>
-                  <div className={`rounded-2xl px-4 py-3 ${isAdvisor ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-800'}`}>
-                    <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-gray-400">{isAdvisor ? 'Advisor' : 'You'}</p>
-                    <span className="text-xs text-gray-400">•</span>
-                    <p className="text-xs text-gray-400">{formatTime(msg.timestamp)}</p>
-                  </div>
+              <div key={msg.id || idx} className={`flex ${isAdvisor ? 'justify-start' : 'justify-end'}`}>
+                <div className={`max-w-[75%] rounded-2xl px-4 py-2 ${isAdvisor ? 'bg-purple-600 text-white' : 'bg-white border border-gray-200'}`}>
+                  <p className="text-sm">{msg.content}</p>
+                  <p className={`text-xs mt-1 ${isAdvisor ? 'text-purple-200' : 'text-gray-400'}`}>
+                    {formatTime(msg.timestamp)}
+                  </p>
                 </div>
               </div>
             );
@@ -185,28 +194,31 @@ const AdvisorMessages = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="p-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
+      {/* Input */}
+      <div className="p-4 border-t bg-white">
         <div className="flex gap-2">
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
             placeholder="Ask your academic advisor a question..."
-            className="flex-1 resize-none py-2 px-4 text-sm rounded-xl border border-gray-200 focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-all duration-200"
+            className="flex-1 resize-none p-2 text-sm border rounded-xl focus:border-purple-500 focus:outline-none"
             rows={2}
             disabled={sending}
-            style={{ minHeight: '44px' }}
           />
           <button
-            onClick={handleSendMessage}
+            onClick={sendMessage}
             disabled={!inputMessage.trim() || sending}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md"
+            className="bg-purple-600 text-white px-5 rounded-xl disabled:opacity-50"
           >
             {sending ? <FaSpinner className="animate-spin" size={16} /> : <FaPaperPlane size={16} />}
-            <span className="hidden sm:inline text-sm">Send</span>
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2 text-center">Messages go directly to your academic advisor</p>
       </div>
     </div>
   );
