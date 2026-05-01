@@ -1,5 +1,5 @@
 // src/components/Advisor/StudentChatView.jsx
-import  { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { advisorAPI } from '../../services/api';
 import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner } from 'react-icons/fa';
@@ -23,12 +23,10 @@ const StudentChatView = () => {
     };
   }, []);
 
-  // ✅ تعريف scrollToBottom أولاً
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // ✅ ثم استخدامها في useEffect
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
@@ -40,10 +38,11 @@ const StudentChatView = () => {
       try {
         const response = await advisorAPI.getStudentConversations(studentId);
         if (isMounted.current) {
-          setMessages(response.data.messages || []);
-          setStudent(response.data.student);
+          setMessages(response.data?.messages || []);
+          setStudent(response.data?.student);
         }
-      } catch {
+      } catch (err) {
+        console.error('Error loading conversation:', err);
         if (isMounted.current) {
           toast.error('Failed to load conversation');
         }
@@ -57,27 +56,34 @@ const StudentChatView = () => {
     fetchConversation();
   }, [studentId]);
 
+  // ✅ Modified: send message as plain string (not object)
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
     
     setSending(true);
     
     try {
-      const response = await advisorAPI.sendMessageToStudent(studentId, {
-        content: inputMessage,
-        type: 'text'
-      });
+      // ✅ Send message as plain string, not as object
+       await advisorAPI.sendMessageToStudent(studentId, inputMessage);
+
       
       if (isMounted.current) {
-        // ✅ استخدام callback form للحصول على أحدث حالة
-        setMessages(prev => [...prev, response.data]);
+        // Add the new message to the list
+        const newMessage = {
+          id: Date.now(),
+          content: inputMessage,
+          senderId: 'advisor',
+          sender: 'Advisor',
+          timestamp: new Date().toISOString()
+        };
+        
+        setMessages(prev => [...prev, newMessage]);
         setInputMessage('');
+        toast.success('Message sent');
+        setTimeout(scrollToBottom, 100);
       }
-      
-      toast.success('Message sent');
-      // ✅ التمرير للأسفل بعد إرسال الرسالة
-      setTimeout(scrollToBottom, 100);
-    } catch {
+    } catch (err) {
+      console.error('Error sending message:', err);
       toast.error('Failed to send message');
     } finally {
       if (isMounted.current) {
@@ -120,7 +126,7 @@ const StudentChatView = () => {
         </div>
         <div>
           <h2 className="font-semibold text-white text-sm sm:text-base">
-            {student?.fullName || student?.name}
+            {student?.fullName || student?.name || `Student ${studentId}`}
           </h2>
           <p className="text-white/70 text-[10px] sm:text-xs">{student?.email}</p>
         </div>
@@ -138,18 +144,18 @@ const StudentChatView = () => {
           messages.map((message, index) => (
             <div
               key={message.id || index}
-              className={`flex ${message.senderId === 'advisor' ? 'justify-end' : 'justify-start'}`}
+              className={`flex ${message.senderId === 'advisor' || message.sender === 'Advisor' ? 'justify-end' : 'justify-start'}`}
             >
-              <div className={`max-w-[80%] sm:max-w-[70%] ${message.senderId === 'advisor' ? 'items-end' : 'items-start'}`}>
+              <div className={`max-w-[80%] sm:max-w-[70%] ${message.senderId === 'advisor' || message.sender === 'Advisor' ? 'items-end' : 'items-start'}`}>
                 <div className={`rounded-2xl px-3 py-2 sm:px-4 sm:py-3 ${
-                  message.senderId === 'advisor'
+                  message.senderId === 'advisor' || message.sender === 'Advisor'
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
                     : 'bg-white border border-gray-200 text-gray-800'
                 }`}>
                   <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{message.content}</p>
                 </div>
                 <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
-                  {formatTime(message.timestamp)}
+                  {formatTime(message.timestamp || message.createdAt || new Date())}
                 </p>
               </div>
             </div>
@@ -166,7 +172,7 @@ const StudentChatView = () => {
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Type your message..."
-            className="flex-1 input-field resize-none py-2 px-3 text-sm rounded-xl"
+            className="flex-1 input-field resize-none py-2 px-3 text-sm rounded-xl border border-gray-200 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-all duration-200"
             rows={window.innerWidth < 640 ? 1 : 2}
             disabled={sending}
             style={{ minHeight: '40px' }}
@@ -174,7 +180,7 @@ const StudentChatView = () => {
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || sending}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 sm:px-5 rounded-xl flex items-center gap-2 disabled:opacity-50 transition-all"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 sm:px-5 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md"
           >
             {sending ? (
               <FaSpinner className="animate-spin" size={16} />
