@@ -41,14 +41,14 @@ export const resetPassword = (token, newPassword) => api.post('/Auth/reset-passw
 export const sendMessage = (data) => api.post('/Chat/send', data);
 export const getConversations = () => api.get('/Chat/conversations');
 export const getConversation = (id) => api.get(`/Chat/conversations/${id}`);
-export const deleteConversation = (id) => api.delete(`/Chat/conversations/${id}`); // ✅ DELETE method
+export const deleteConversation = (id) => api.delete(`/Chat/conversations/${id}`);
 export const archiveConversation = (id) => api.put(`/Chat/conversations/${id}/archive`);
 export const markMessageAsRead = (messageId) => api.put(`/Chat/messages/${messageId}/read`);
 export const searchMessages = (query) => api.get(`/Chat/messages/search?q=${query}`);
-export const sendToAdvisor = (message) => api.post('/Chat/send-to-advisor', { message });
+export const sendToAdvisor = (message) => api.post('/Chat/send-to-advisor', message);
 export const getAdvisorMessages = () => api.get('/Chat/advisor-messages');
 export const getStudentAdvisorMessages = () => api.get('/Chat/advisor-messages');
-export const sendMessageToAdvisor = (message) => api.post('/Chat/send-to-advisor', { message });
+export const sendMessageToAdvisor = (message) => api.post('/Chat/send-to-advisor', message);
 
 // ==================== USER ====================
 export const getProfile = () => api.get('/User/profile');
@@ -70,7 +70,8 @@ export const createRegulation = (data) => api.post('/Admin/regulations', {
   answer: data.answer,
   category: data.category,
   keywords: data.keywords || ''
-});export const updateRegulation = (id, data) => api.put(`/Admin/regulations/${id}`, data);
+});
+export const updateRegulation = (id, data) => api.put(`/Admin/regulations/${id}`, data);
 export const deleteRegulation = (id) => api.delete(`/Admin/regulations/${id}`);
 export const bulkImportRegulations = (data) => api.post('/Admin/regulations/bulk', data);
 export const exportRegulations = () => api.get('/Admin/regulations/export', { responseType: 'blob' });
@@ -89,7 +90,6 @@ export const toggleStudentStatus = (studentId) => api.put(`/Advisor/students/${s
 export const getSystemHealth = () => api.get('/System/health');
 export const getSystemStats = () => api.get('/System/stats');
 export const getAuditLogs = (params) => api.get('/System/audit-logs', { params });
-
 
 // ==================== EXPORTS FOR COMPATIBILITY ====================
 // Export adminAPI for admin components
@@ -119,5 +119,10 @@ export const advisorAPI = {
   getStats: getAdvisorStats,
   toggleStudentStatus: toggleStudentStatus,
 };
+
+// ✅ Export for unified chat (Student-Advisor)
+export const getUnifiedConversations = () => api.get('/Chat/conversations');
+export const getUnifiedConversation = (id) => api.get(`/Chat/conversations/${id}`);
+export const sendUnifiedMessage = (data) => api.post('/Chat/send', data);
 
 export default api;

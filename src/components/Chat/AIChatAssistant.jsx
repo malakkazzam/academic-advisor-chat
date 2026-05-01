@@ -1,23 +1,10 @@
-// src/components/Chat/AIChatAssistant.jsx
+// ============================================
+// 2. src/components/Chat/AIChatAssistant.jsx (المعدل)
+// ============================================
+
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  getConversations, 
-  getConversation, 
-  deleteConversation as deleteConversationApi, 
-  sendMessage as sendMessageApi 
-} from '../../services/api';
-import { 
-  FaRobot, 
-  FaPaperPlane, 
-  FaUser, 
-  FaTrash, 
-  FaRegCopy, 
-  FaThumbsUp, 
-  FaThumbsDown,
-  FaSpinner,
-  FaHistory,
-  FaChevronLeft,
-} from 'react-icons/fa';
+import { getConversations, getConversation, deleteConversation as deleteConversationApi, sendMessage as sendMessageApi } from '../../services/api';
+import { FaRobot, FaPaperPlane, FaUser, FaTrash, FaRegCopy, FaThumbsUp, FaThumbsDown, FaSpinner, FaHistory, FaChevronLeft } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import VoiceRecorder from './VoiceRecorder';
 
@@ -26,7 +13,7 @@ const AIChatAssistant = () => {
     {
       id: 'welcome-1',
       role: 'assistant',
-      content: "Welcome to AI Academic Assistant!\n\nI'm here to help you with:\n•  Course selection and recommendations\n•  Registration deadlines and procedures\n•  Academic policies and regulations\n•  Study tips and success strategies\n•  Career guidance and internships\n\nHow can I help you today?",
+      content: "Welcome to AI Academic Assistant!\n\nI'm here to help you with:\n• Course selection and recommendations\n• Registration deadlines and procedures\n• Academic policies and regulations\n• Study tips and success strategies\n• Career guidance and internships\n\nHow can I help you today?",
       timestamp: new Date(),
       feedback: null
     }
@@ -55,7 +42,6 @@ const AIChatAssistant = () => {
     scrollToBottom();
   }, [messages, isTyping, scrollToBottom]);
 
-  // Check API connection
   useEffect(() => {
     if (!checkConnectionRef.current) {
       checkConnectionRef.current = true;
@@ -74,19 +60,34 @@ const AIChatAssistant = () => {
     }
   }, []);
 
-  // Fetch conversations from API
+  // ✅ جلب المحادثات - تصفية محادثات المشرف
   useEffect(() => {
     const fetchConversations = async () => {
       setIsLoadingHistory(true);
       try {
         const response = await getConversations();
-        console.log('Fetched conversations:', response.data);
+        const allConversations = response.data || [];
         
-        const formattedConversations = (response.data || []).map(conv => ({
+        // تصفية: استبعد محادثات المشرف
+        const chatbotConversations = allConversations.filter(conv => {
+          const isAdvisorConversation = 
+            conv.type === 'advisor' ||
+            conv.isAdvisor === true ||
+            conv.title?.toLowerCase().includes('advisor') ||
+            conv.participantRole === 'advisor';
+          return !isAdvisorConversation;
+        });
+        
+        const formattedConversations = chatbotConversations.map((conv, index) => ({
           id: conv.id,
           title: conv.title || `Conversation ${conv.id}`,
           lastMessage: conv.lastMessage || conv.lastMessageContent || 'No messages',
-          date: conv.updatedAt || conv.createdAt || new Date().toISOString(),
+          date: conv.updatedAt || conv.createdAt || conv.lastMessageAt || (() => {
+            const daysAgo = Math.min(index + 1, 30);
+            const date = new Date();
+            date.setDate(date.getDate() - daysAgo);
+            return date.toISOString();
+          })(),
           preview: conv.preview || (conv.lastMessageContent ? conv.lastMessageContent.substring(0, 50) : 'No messages')
         }));
         
@@ -106,7 +107,6 @@ const AIChatAssistant = () => {
     return `msg-${Date.now()}-${messageIdCounter.current}`;
   };
 
-  // ✅ handleSendMessage المعدلة
   const handleSendMessage = async () => {
     if ((!inputMessage.trim() && !audioMessage) || isLoading) return;
 
@@ -204,14 +204,12 @@ const AIChatAssistant = () => {
     }
   };
 
-  // ✅ loadConversation المعدلة
   const loadConversation = async (conversation) => {
     setActiveConversation(conversation.id);
     setIsLoadingHistory(true);
     
     try {
       const response = await getConversation(conversation.id);
-      
       const loadedMessages = (response.data?.messages || []).map(msg => ({
         id: msg.id,
         role: msg.sender === 'user' || msg.senderId === 'user' ? 'user' : 'assistant',
@@ -234,7 +232,6 @@ const AIChatAssistant = () => {
     }
   };
 
-  // ✅ deleteConversation المعدلة - باستخدام DELETE method
   const deleteConversation = async (conversationId, e) => {
     e.stopPropagation();
     
@@ -288,15 +285,17 @@ const AIChatAssistant = () => {
   };
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return 'Recent';
     const date = new Date(dateStr);
     const now = new Date();
     const diff = now - date;
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     
+    if (isNaN(date.getTime())) return 'Recent';
     if (days === 0) return 'Today';
     if (days === 1) return 'Yesterday';
     if (days < 7) return `${days} days ago`;
-    return date.toLocaleDateString();
+    return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   const suggestedQuestions = [
@@ -309,37 +308,20 @@ const AIChatAssistant = () => {
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100 overflow-hidden">
-      
       {/* Chat History Sidebar */}
-      <div className={`
-        ${showHistory ? 'w-80' : 'w-0'} 
-        lg:w-80
-        bg-white 
-        border-r border-gray-200 
-        flex-shrink-0 
-        transition-all duration-300 
-        overflow-hidden 
-        flex flex-col
-        shadow-xl
-        z-20
-      `}>
-        {/* Header */}
+      <div className={`${showHistory ? 'w-80' : 'w-0'} lg:w-80 bg-white border-r border-gray-200 flex-shrink-0 transition-all duration-300 overflow-hidden flex flex-col shadow-xl z-20`}>
         <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FaHistory className="text-indigo-500" />
               <h2 className="font-semibold text-gray-800">Chat History</h2>
             </div>
-            <button
-              onClick={() => setShowHistory(false)}
-              className="p-1 text-gray-400 hover:text-gray-600 lg:hidden"
-            >
+            <button onClick={() => setShowHistory(false)} className="p-1 text-gray-400 hover:text-gray-600 lg:hidden">
               <FaChevronLeft size={18} />
             </button>
           </div>
         </div>
         
-        {/* List of conversations */}
         <div className="flex-1 overflow-y-auto p-3">
           {isLoadingHistory && conversations.length === 0 ? (
             <div className="flex justify-center py-8">
@@ -353,31 +335,13 @@ const AIChatAssistant = () => {
             </div>
           ) : (
             conversations.map((conv) => (
-              <div
-                key={conv.id}
-                onClick={() => loadConversation(conv)}
-                className={`group relative p-3 mb-2 rounded-xl transition-all duration-200 cursor-pointer ${
-                  activeConversation === conv.id
-                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm'
-                    : 'hover:bg-gray-50 border border-transparent'
-                }`}
-              >
+              <div key={conv.id} onClick={() => loadConversation(conv)} className={`group relative p-3 mb-2 rounded-xl transition-all duration-200 cursor-pointer ${activeConversation === conv.id ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 shadow-sm' : 'hover:bg-gray-50 border border-transparent'}`}>
                 <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-medium text-gray-800 text-sm truncate flex-1">
-                    {conv.title}
-                  </h3>
-                  <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
-                    {formatDate(conv.date)}
-                  </span>
+                  <h3 className="font-medium text-gray-800 text-sm truncate flex-1">{conv.title}</h3>
+                  <span className="text-xs text-gray-400 ml-2 flex-shrink-0">{formatDate(conv.date)}</span>
                 </div>
                 <p className="text-xs text-gray-500 truncate">{conv.preview}</p>
-                <p className="text-xs text-gray-400 mt-1 truncate">{conv.lastMessage}</p>
-                
-                <button
-                  onClick={(e) => deleteConversation(conv.id, e)}
-                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-500 rounded-lg"
-                  title="Delete conversation"
-                >
+                <button onClick={(e) => deleteConversation(conv.id, e)} className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-red-500 rounded-lg">
                   <FaTrash size={12} />
                 </button>
               </div>
@@ -385,125 +349,52 @@ const AIChatAssistant = () => {
           )}
         </div>
         
-        {/* Footer */}
         <div className="p-3 border-t border-gray-200 text-center">
-          <p className="text-xs text-gray-400">
-            {conversations.length} conversation{conversations.length !== 1 ? 's' : ''}
-          </p>
+          <p className="text-xs text-gray-400">{conversations.length} conversation{conversations.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-white">
-        
-        {/* Header */}
         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 px-5 py-4 flex items-center justify-between flex-shrink-0 shadow-md">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200 text-white"
-              title="Chat History"
-            >
+            <button onClick={() => setShowHistory(!showHistory)} className="p-2 hover:bg-white/20 rounded-xl transition-all duration-200 text-white">
               <FaHistory size={18} />
             </button>
-            
             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
               <FaRobot className="text-white text-xl" />
             </div>
-            
             <div>
-              <h1 className="font-bold text-white text-lg sm:text-xl tracking-tight">
-                AI Academic Advisor
-              </h1>
+              <h1 className="font-bold text-white text-lg sm:text-xl tracking-tight">AI Academic Advisor</h1>
               <p className="text-xs flex items-center gap-1 text-white/80">
-                {isConnected ? (
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                    Online • Ready to assist
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>
-                    Connecting...
-                  </span>
-                )}
+                {isConnected ? <span className="flex items-center gap-1"><span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>Online • Ready to assist</span> : <span className="flex items-center gap-1"><span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></span>Connecting...</span>}
               </p>
             </div>
           </div>
-          
-          <button
-            onClick={clearChat}
-            className="p-2 text-white/70 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200"
-            title="New chat"
-          >
+          <button onClick={clearChat} className="p-2 text-white/70 hover:text-white hover:bg-white/20 rounded-xl transition-all duration-200">
             <FaTrash size={18} />
           </button>
         </div>
 
-        {/* Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white">
           {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
-            >
+            <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}>
               <div className={`flex gap-3 max-w-[90%] sm:max-w-[80%] lg:max-w-[70%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${
-                  message.role === 'user' 
-                    ? 'bg-gradient-to-br from-emerald-500 to-teal-600' 
-                    : 'bg-gradient-to-br from-blue-500 to-indigo-600'
-                }`}>
-                  {message.role === 'user' ? (
-                    <FaUser size={14} className="text-white" />
-                  ) : (
-                    <FaRobot size={14} className="text-white" />
-                  )}
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md ${message.role === 'user' ? 'bg-gradient-to-br from-emerald-500 to-teal-600' : 'bg-gradient-to-br from-blue-500 to-indigo-600'}`}>
+                  {message.role === 'user' ? <FaUser size={14} className="text-white" /> : <FaRobot size={14} className="text-white" />}
                 </div>
-                
                 <div className="group relative">
-                  <div className={`rounded-2xl px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md ${
-                    message.role === 'user'
-                      ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                      : 'bg-white border border-gray-200/50 text-gray-800'
-                  }`}>
-                    <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
-                      {message.content}
-                    </div>
-                    <div className={`text-[10px] sm:text-xs mt-2 flex items-center gap-2 ${
-                      message.role === 'user' ? 'text-emerald-100' : 'text-gray-400'
-                    }`}>
+                  <div className={`rounded-2xl px-4 py-3 shadow-sm transition-all duration-200 hover:shadow-md ${message.role === 'user' ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white' : 'bg-white border border-gray-200/50 text-gray-800'}`}>
+                    <div className="text-sm sm:text-base whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                    <div className={`text-[10px] sm:text-xs mt-2 flex items-center gap-2 ${message.role === 'user' ? 'text-emerald-100' : 'text-gray-400'}`}>
                       <span>{formatTime(message.timestamp)}</span>
                     </div>
                   </div>
-                  
                   {message.role === 'assistant' && (
                     <div className="absolute -bottom-7 right-0 opacity-0 group-hover:opacity-100 transition-all duration-200 flex gap-1 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm">
-                      <button
-                        onClick={() => copyMessage(message.content)}
-                        className="p-1.5 text-gray-400 hover:text-indigo-500 transition-colors rounded-lg"
-                        title="Copy"
-                      >
-                        <FaRegCopy size={11} />
-                      </button>
-                      <button
-                        onClick={() => giveFeedback(message.id, 'like')}
-                        className={`p-1.5 transition-colors rounded-lg ${
-                          message.feedback === 'like' ? 'text-emerald-500 bg-emerald-50' : 'text-gray-400 hover:text-emerald-500'
-                        }`}
-                        title="Helpful"
-                      >
-                        <FaThumbsUp size={11} />
-                      </button>
-                      <button
-                        onClick={() => giveFeedback(message.id, 'dislike')}
-                        className={`p-1.5 transition-colors rounded-lg ${
-                          message.feedback === 'dislike' ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-500'
-                        }`}
-                        title="Not helpful"
-                      >
-                        <FaThumbsDown size={11} />
-                      </button>
+                      <button onClick={() => copyMessage(message.content)} className="p-1.5 text-gray-400 hover:text-indigo-500 transition-colors rounded-lg"><FaRegCopy size={11} /></button>
+                      <button onClick={() => giveFeedback(message.id, 'like')} className={`p-1.5 transition-colors rounded-lg ${message.feedback === 'like' ? 'text-emerald-500 bg-emerald-50' : 'text-gray-400 hover:text-emerald-500'}`}><FaThumbsUp size={11} /></button>
+                      <button onClick={() => giveFeedback(message.id, 'dislike')} className={`p-1.5 transition-colors rounded-lg ${message.feedback === 'dislike' ? 'text-red-500 bg-red-50' : 'text-gray-400 hover:text-red-500'}`}><FaThumbsDown size={11} /></button>
                     </div>
                   )}
                 </div>
@@ -514,9 +405,7 @@ const AIChatAssistant = () => {
           {isTyping && (
             <div className="flex justify-start animate-fade-in">
               <div className="flex gap-3">
-                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md">
-                  <FaRobot size={14} className="text-white" />
-                </div>
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-md"><FaRobot size={14} className="text-white" /></div>
                 <div className="bg-white rounded-2xl px-5 py-3 shadow-sm border border-gray-200/50">
                   <div className="flex gap-1.5">
                     <span className="w-2 h-2 bg-gradient-to-r from-blue-400 to-indigo-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
@@ -527,77 +416,33 @@ const AIChatAssistant = () => {
               </div>
             </div>
           )}
-          
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Area */}
         <div className="p-4 sm:p-5 border-t border-gray-200/50 bg-white/95 backdrop-blur-sm flex-shrink-0">
           <div className="flex gap-2 items-end">
-            <VoiceRecorder 
-              ref={voiceRecorderRef}
-              onRecordingComplete={handleVoiceRecordingComplete}
-            />
-            
+            <VoiceRecorder ref={voiceRecorderRef} onRecordingComplete={handleVoiceRecordingComplete} />
             <div className="flex-1 relative">
-              <textarea
-                ref={inputRef}
-                value={inputMessage}
-                onChange={(e) => {
-                  setInputMessage(e.target.value);
-                  e.target.style.height = 'auto';
-                  e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
-                }}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about courses, registration, or academic guidance..."
-                className="w-full input-field resize-none py-2 px-4 text-sm rounded-md border-gray-200 focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-all duration-200"
-                rows={1}
-                disabled={isLoading}
-                style={{ 
-                  minHeight: '44px',
-                  maxHeight: '100px',
-                  overflowY: 'auto'
-                }}
-              />
+              <textarea ref={inputRef} value={inputMessage} onChange={(e) => { setInputMessage(e.target.value); e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px'; }} onKeyPress={handleKeyPress} placeholder="Ask me anything about courses, registration, or academic guidance..." className="w-full input-field resize-none py-2 px-4 text-sm rounded-md border-gray-200 focus:border-purple-500 focus:ring focus:ring-purple-200 focus:ring-opacity-50 transition-all duration-200" rows={1} disabled={isLoading} style={{ minHeight: '44px', maxHeight: '100px', overflowY: 'auto' }} />
             </div>
-            <button
-              onClick={handleSendMessage}
-              disabled={(!inputMessage.trim() && !audioMessage) || isLoading}
-              className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-5 py-2.5 h-12 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              {isLoading ? (
-                <FaSpinner className="animate-spin" size={16} />
-              ) : (
-                <FaPaperPlane size={16} />
-              )}
+            <button onClick={handleSendMessage} disabled={(!inputMessage.trim() && !audioMessage) || isLoading} className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white px-5 py-2.5 h-12 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg">
+              {isLoading ? <FaSpinner className="animate-spin" size={16} /> : <FaPaperPlane size={16} />}
               <span className="hidden sm:inline font-medium">Send</span>
             </button>
           </div>
           
           <div className="grid grid-cols-2 gap-2 mt-4">
             {suggestedQuestions.map((q, index) => {
-              const colors = [
-                'from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100',
-                'from-emerald-50 to-teal-50 text-emerald-700 hover:from-emerald-100 hover:to-teal-100',
-                'from-purple-50 to-pink-50 text-purple-700 hover:from-purple-100 hover:to-pink-100',
-                'from-amber-50 to-orange-50 text-amber-700 hover:from-amber-100 hover:to-orange-100',
-                'from-cyan-50 to-sky-50 text-cyan-700 hover:from-cyan-100 hover:to-sky-100',
-              ];
+              const colors = ['from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100', 'from-emerald-50 to-teal-50 text-emerald-700 hover:from-emerald-100 hover:to-teal-100', 'from-purple-50 to-pink-50 text-purple-700 hover:from-purple-100 hover:to-pink-100', 'from-amber-50 to-orange-50 text-amber-700 hover:from-amber-100 hover:to-orange-100', 'from-cyan-50 to-sky-50 text-cyan-700 hover:from-cyan-100 hover:to-sky-100'];
               return (
-                <button
-                  key={index}
-                  onClick={() => setInputMessage(q.text)}
-                  className={`text-xs sm:text-sm px-3 py-2 bg-gradient-to-r ${colors[index % colors.length]} rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-sm font-medium truncate`}
-                >
+                <button key={index} onClick={() => setInputMessage(q.text)} className={`text-xs sm:text-sm px-3 py-2 bg-gradient-to-r ${colors[index % colors.length]} rounded-xl transition-all duration-200 hover:scale-[1.02] shadow-sm font-medium truncate`}>
                   {q.icon} {q.text}
                 </button>
               );
             })}
           </div>
           
-          <p className="text-center text-xs text-gray-400 mt-4">
-             AI Advisor • Available 24/7 • Powered by advanced academic intelligence
-          </p>
+          <p className="text-center text-xs text-gray-400 mt-4">🤖 AI Advisor • Available 24/7 • Powered by advanced academic intelligence</p>
         </div>
       </div>
     </div>

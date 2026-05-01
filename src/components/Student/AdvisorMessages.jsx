@@ -1,6 +1,6 @@
 // src/components/Student/AdvisorMessages.jsx
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { getStudentAdvisorMessages, sendMessageToAdvisor } from '../../services/api';
+import { getConversations, getConversation, sendToAdvisor } from '../../services/api';
 import { FaUserTie, FaPaperPlane, FaSpinner, FaCommentDots } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
@@ -9,10 +9,11 @@ const AdvisorMessages = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
+  const [ setAdvisorConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
   const intervalRef = useRef(null);
-  const isFetching = useRef(false); // منع الـ overlapping requests
+  const hasInitialized = useRef(false); // ✅ لمنع التنفيذ المتكرر
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -22,20 +23,32 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ تعريف fetchMessages كـ async function منفصلة مع cleanup
-  const fetchMessages = useCallback(async () => {
-    // منع الـ concurrent requests
-    if (isFetching.current || !isMounted.current) return;
-    
-    isFetching.current = true;
+  const fetchAdvisorConversation = useCallback(async () => {
+    if (!isMounted.current) return;
     
     try {
-      const response = await getStudentAdvisorMessages();
-      if (isMounted.current) {
-        setMessages(response.data || []);
+      const response = await getConversations();
+      const allConversations = response.data || [];
+      
+      const advisorConvs = allConversations.filter(conv => 
+        conv.type === 'advisor' ||
+        conv.isAdvisor === true ||
+        conv.title?.toLowerCase().includes('advisor') ||
+        conv.title?.toLowerCase().includes('academic advisor') ||
+        conv.participantRole === 'advisor'
+      );
+      
+      if (advisorConvs.length > 0 && isMounted.current) {
+        setAdvisorConversationId(advisorConvs[0].id);
+        const convDetail = await getConversation(advisorConvs[0].id);
+        if (isMounted.current) {
+          setMessages(convDetail.data?.messages || []);
+        }
+      } else if (isMounted.current) {
+        setMessages([]);
       }
     } catch (err) {
-      console.error('Error fetching messages:', err);
+      console.error('Error fetching advisor conversation:', err);
       if (isMounted.current && !loading) {
         toast.error('Failed to load messages');
       }
@@ -43,34 +56,32 @@ const AdvisorMessages = () => {
       if (isMounted.current) {
         setLoading(false);
       }
-      isFetching.current = false;
     }
   }, [loading]);
 
-  // ✅ useEffect مع async/await بطريقة صحيحة
+  // ✅ useEffect المعدل
   useEffect(() => {
-    // Start fetching immediately
-    const initFetch = async () => {
-      await fetchMessages();
-    };
+    isMounted.current = true;
     
-    initFetch();
+    if (!hasInitialized.current) {
+      hasInitialized.current = true;
+      const loadMessages = async () => {
+        await fetchAdvisorConversation();
+      };
+      loadMessages();
+    }
     
-    // Set up polling every 30 seconds
     intervalRef.current = setInterval(() => {
       if (isMounted.current) {
-        fetchMessages();
+        fetchAdvisorConversation();
       }
     }, 30000);
     
-    // Cleanup function
     return () => {
       isMounted.current = false;
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [fetchMessages]); // ✅ fetchMessages هي الـ dependency الوحيدة
+  }, [fetchAdvisorConversation]);
 
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
@@ -79,31 +90,29 @@ const AdvisorMessages = () => {
     const messageText = inputMessage;
     setInputMessage('');
 
-    // إضافة الرسالة محلياً فوراً
     const newMessage = {
       id: Date.now(),
       content: messageText,
       sender: 'Student',
       senderId: 'student',
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      isLocal: true
     };
     setMessages(prev => [...prev, newMessage]);
     scrollToBottom();
 
     try {
-      await sendMessageToAdvisor(messageText);
+      await sendToAdvisor(messageText);
       toast.success('Message sent to advisor');
       
-      // ✅ جلب الرسائل بعد التأخير عشان نشوف رد الـ advisor
       setTimeout(() => {
         if (isMounted.current) {
-          fetchMessages();
+          fetchAdvisorConversation();
         }
       }, 1000);
     } catch (err) {
       console.error('Error sending message:', err);
       toast.error('Failed to send message');
-      // لو فشلت، نشيل الرسالة اللي ضفناها
       setMessages(prev => prev.filter(msg => msg.id !== newMessage.id));
       setInputMessage(messageText);
     } finally {
@@ -133,7 +142,6 @@ const AdvisorMessages = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-indigo-600 px-4 sm:px-6 py-4 flex items-center gap-3 shadow-md">
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
           <FaUserTie className="text-white text-lg" />
@@ -144,7 +152,6 @@ const AdvisorMessages = () => {
         </div>
       </div>
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
@@ -156,22 +163,13 @@ const AdvisorMessages = () => {
           messages.map((msg, index) => {
             const isAdvisor = msg.sender === 'Advisor' || msg.senderId === 'advisor';
             return (
-              <div
-                key={msg.id || index}
-                className={`flex ${isAdvisor ? 'justify-start' : 'justify-end'}`}
-              >
+              <div key={msg.id || index} className={`flex ${isAdvisor ? 'justify-start' : 'justify-end'}`}>
                 <div className={`max-w-[80%] ${isAdvisor ? 'items-start' : 'items-end'}`}>
-                  <div className={`rounded-2xl px-4 py-3 ${
-                    isAdvisor
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
-                      : 'bg-white border border-gray-200 text-gray-800'
-                  }`}>
+                  <div className={`rounded-2xl px-4 py-3 ${isAdvisor ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white' : 'bg-white border border-gray-200 text-gray-800'}`}>
                     <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
                   </div>
                   <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-gray-400">
-                      {isAdvisor ? 'Advisor' : 'You'}
-                    </p>
+                    <p className="text-xs text-gray-400">{isAdvisor ? 'Advisor' : 'You'}</p>
                     <span className="text-xs text-gray-400">•</span>
                     <p className="text-xs text-gray-400">{formatTime(msg.timestamp)}</p>
                   </div>
@@ -183,7 +181,6 @@ const AdvisorMessages = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="p-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
         <div className="flex gap-2">
           <textarea
@@ -201,17 +198,11 @@ const AdvisorMessages = () => {
             disabled={!inputMessage.trim() || sending}
             className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-5 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md"
           >
-            {sending ? (
-              <FaSpinner className="animate-spin" size={16} />
-            ) : (
-              <FaPaperPlane size={16} />
-            )}
+            {sending ? <FaSpinner className="animate-spin" size={16} /> : <FaPaperPlane size={16} />}
             <span className="hidden sm:inline text-sm">Send</span>
           </button>
         </div>
-        <p className="text-xs text-gray-400 mt-2 text-center">
-          Messages go directly to your academic advisor
-        </p>
+        <p className="text-xs text-gray-400 mt-2 text-center">Messages go directly to your academic advisor</p>
       </div>
     </div>
   );
