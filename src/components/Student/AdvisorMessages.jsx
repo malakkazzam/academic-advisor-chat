@@ -24,40 +24,44 @@ const AdvisorMessages = () => {
   }, [messages]);
 
   const fetchAdvisorConversation = useCallback(async () => {
-    if (!isMounted.current) return;
+  if (!isMounted.current) return;
+  
+  try {
+    const response = await getConversations();
+    const allConversations = response.data || [];
     
-    try {
-      const response = await getConversations();
-      const allConversations = response.data || [];
-      
-      const advisorConvs = allConversations.filter(conv => 
-        conv.type === 'advisor' ||
-        conv.isAdvisor === true ||
-        conv.title?.toLowerCase().includes('advisor') ||
-        conv.title?.toLowerCase().includes('academic advisor') ||
-        conv.participantRole === 'advisor'
-      );
-      
-      if (advisorConvs.length > 0 && isMounted.current) {
-        setAdvisorConversationId(advisorConvs[0].id);
-        const convDetail = await getConversation(advisorConvs[0].id);
-        if (isMounted.current) {
-          setMessages(convDetail.data?.messages || []);
-        }
-      } else if (isMounted.current) {
-        setMessages([]);
-      }
-    } catch (err) {
-      console.error('Error fetching advisor conversation:', err);
-      if (isMounted.current && !loading) {
-        toast.error('Failed to load messages');
-      }
-    } finally {
+    const advisorConvs = allConversations.filter(conv => 
+      conv.type === 'advisor' ||
+      conv.isAdvisor === true ||
+      conv.title?.toLowerCase().includes('advisor') ||
+      conv.title?.toLowerCase().includes('academic advisor') ||
+      conv.participantRole === 'advisor'
+    );
+    
+    if (advisorConvs.length > 0 && isMounted.current) {
+      setAdvisorConversationId(advisorConvs[0].id);
+      const convDetail = await getConversation(advisorConvs[0].id);
       if (isMounted.current) {
-        setLoading(false);
+        const serverMessages = convDetail.data?.messages || [];
+        
+        // ✅ دمج الرسائل بدل استبدالها
+        setMessages(prev => {
+          // خريطة للرسائل الموجودة (حسب id)
+          const existingIds = new Set(prev.map(m => m.id));
+          // أضف بس الرسائل الجديدة من السيرفر
+          const newMessages = serverMessages.filter(m => !existingIds.has(m.id));
+          return [...prev, ...newMessages];
+        });
       }
     }
-  }, [loading]);
+  } catch (err) {
+    console.error('Error fetching advisor conversation:', err);
+  } finally {
+    if (isMounted.current) {
+      setLoading(false);
+    }
+  }
+}, []);
 
   // ✅ useEffect المعدل
   useEffect(() => {
