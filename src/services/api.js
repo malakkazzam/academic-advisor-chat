@@ -84,4 +84,34 @@ export const getSystemHealth = () => api.get('/System/health');
 export const getSystemStats = () => api.get('/System/stats');
 export const getAuditLogs = (params) => api.get('/System/audit-logs', { params });
 
+
+// ==================== EXPORTS FOR COMPATIBILITY ====================
+// Export adminAPI for admin components
+export const adminAPI = {
+  getDashboard: getDashboardStats,
+  getAnalytics: getAdminAnalytics,
+  getUsers: getUsers,
+  updateUserRole: updateUserRole,
+  toggleUserStatus: toggleUserStatus,
+  deleteUser: deleteUser,
+  getRegulations: getRegulations,
+  createRegulation: createRegulation,
+  updateRegulation: updateRegulation,
+  deleteRegulation: deleteRegulation,
+  bulkImportRegulations: bulkImportRegulations,
+  exportRegulations: exportRegulations,
+};
+
+// Export advisorAPI for advisor components
+export const advisorAPI = {
+  getStudents: getStudents,
+  getStudentDetails: getStudentDetails,
+  getStudentConversations: getStudentConversations,
+  getAdvisorConversation: getAdvisorConversation,
+  sendMessageToStudent: sendMessageToStudent,
+  getAnalytics: getAdvisorAnalytics,
+  getStats: getAdvisorStats,
+  toggleStudentStatus: toggleStudentStatus,
+};
+
 export default api;
