@@ -69,24 +69,38 @@ const UsersManagement = () => {
     setShowRoleModal(true);
   };
 
-  const updateUserRole = async () => {
-    if (!selectedUser || !newRole) return;
+ const updateUserRole = async () => {
+  if (!selectedUser || !newRole) return;
+  
+  try {
+    const token = localStorage.getItem('token');
     
-    try {
-      await adminAPI.updateUserRole(selectedUser.id, { role: newRole });
+    // ✅ استخدمي fetch مباشرة زي ما جربتي في Console
+    const response = await fetch(`https://siraj.runasp.net/api/Admin/users/${selectedUser.id}/role`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ role: newRole })
+    });
+    
+    if (response.ok) {
       toast.success(`User role updated to ${newRole}`);
-      
       // تحديث القائمة
-      const response = await adminAPI.getUsers();
-      setUsers(response.data || []);
-      
+      const usersResponse = await adminAPI.getUsers();
+      setUsers(usersResponse.data || []);
       setShowRoleModal(false);
       setSelectedUser(null);
-    } catch (err) {
-      console.error('Error updating role:', err);
-      toast.error('Failed to update user role');
+    } else {
+      const errorData = await response.json();
+      toast.error(errorData.message || 'Failed to update role');
     }
-  };
+  } catch (err) {
+    console.error('Error updating role:', err);
+    toast.error('Failed to update user role');
+  }
+};
 
   // فلترة المستخدمين
   const filteredUsers = users.filter(user =>

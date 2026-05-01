@@ -60,7 +60,7 @@ export const getAdminAnalytics = () => api.get('/Admin/analytics');
 export const getUsers = () => api.get('/Admin/users');
 export const toggleUserStatus = (userId) => api.put(`/Admin/users/${userId}/toggle-status`);
 export const deleteUser = (userId) => api.delete(`/Admin/users/${userId}`);
-export const updateUserRole = (userId, role) => api.put(`/Admin/users/${userId}/role`, { role });
+export const updateUserRole = (userId, role) => api.put(`/Admin/users/${userId}/role`, role);
 export const getRegulations = () => api.get('/Admin/regulations');
 export const getRegulationById = (id) => api.get(`/Admin/regulations/${id}`);
 export const createRegulation = (data) => api.post('/Admin/regulations', data);
