@@ -78,7 +78,9 @@ export const getStudents = () => api.get('/Advisor/students');
 export const getStudentDetails = (studentId) => api.get(`/Advisor/students/${studentId}`);
 export const getStudentConversations = (studentId) => api.get(`/Advisor/students/${studentId}/conversations`);
 export const getAdvisorConversation = (conversationId) => api.get(`/Advisor/conversations/${conversationId}`);
-export const sendMessageToStudent = (studentId, message) => api.post(`/Advisor/students/${studentId}/send-message`, message);export const getAdvisorStats = () => api.get('/Advisor/stats');
+export const sendMessageToStudent = (studentId, message) => api.post(`/Advisor/students/${studentId}/send-message`, message);
+export const getAdvisorAnalytics = () => api.get('/Advisor/analytics');
+export const getAdvisorStats = () => api.get('/Advisor/stats');
 export const toggleStudentStatus = (studentId) => api.put(`/Advisor/students/${studentId}/toggle-status`);
 
 // ==================== SYSTEM ====================
