@@ -1,7 +1,4 @@
-// ============================================
-// 1. src/components/Student/AdvisorMessages.jsx (كامل)
-// ============================================
-
+// src/components/Student/AdvisorMessages.jsx
 import { useState, useEffect, useRef } from 'react';
 import { FaUserTie, FaPaperPlane, FaSpinner, FaCommentDots, FaCheck, FaCheckDouble } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -26,7 +23,6 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  // تحميل الصوت
   useEffect(() => {
     audioRef.current = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
     return () => {
@@ -37,10 +33,8 @@ const AdvisorMessages = () => {
     };
   }, []);
 
-  // ✅ استخدام نفس Conversation ID اللي يستخدمه المشرف (ID 37)
   const ADVISOR_CONVERSATION_ID = 37;
 
-  // ✅ جلب المحادثة
   const loadConversation = async () => {
     if (!isMounted.current || isFetching.current) return;
     
@@ -56,7 +50,6 @@ const AdvisorMessages = () => {
         const convData = await response.json();
         const newMessages = convData.messages || [];
         
-        // تشغيل الصوت عند وصول رسالة جديدة
         if (newMessages.length > previousMessageCount && previousMessageCount > 0 && isMounted.current) {
           if (audioRef.current) {
             audioRef.current.play().catch(e => console.log('Audio play failed:', e));
@@ -81,7 +74,6 @@ const AdvisorMessages = () => {
     }
   };
 
-  // ✅ تحديث دوري
   const updateMessages = async () => {
     if (!isMounted.current) return;
     const token = localStorage.getItem('token');
@@ -111,7 +103,6 @@ const AdvisorMessages = () => {
     }
   };
 
-  // ✅ useEffect للتحميل الأولي
   useEffect(() => {
     isMounted.current = true;
     
@@ -128,7 +119,7 @@ const AdvisorMessages = () => {
     };
   }, []);
 
-  // ✅ إرسال رسالة (بدون AI)
+  // ✅ إرسال رسالة - النسخة المعدلة
   const sendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
@@ -151,28 +142,45 @@ const AdvisorMessages = () => {
     const token = localStorage.getItem('token');
     
     try {
-      // ✅ استخدام endpoint خاص بالطالب بدون AI
-      const response = await fetch('/api/Chat/send-to-advisor', {
+      // ✅ إرسال مع conversationId ثابت
+      const response = await fetch('/api/Chat/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({
+          conversationId: ADVISOR_CONVERSATION_ID,
+          message: text,
+          type: 'text'
+        })
       });
+      
+      const data = await response.json();
+      console.log('Send response:', data);
       
       if (response.ok) {
         setMessages(prev => prev.map(m => 
           m.id === tempMsg.id ? { ...m, status: 'sent', temp: false } : m
         ));
         toast.success('Message sent to advisor');
-        setTimeout(() => updateMessages(), 500);
+        
+        // جلب الرسائل مرة أخرى
+        setTimeout(async () => {
+          const msgRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const convData = await msgRes.json();
+          if (isMounted.current) {
+            setMessages(convData.messages || []);
+          }
+        }, 500);
       } else {
-        throw new Error('Send failed');
+        throw new Error(data.message || 'Send failed');
       }
     } catch (err) {
       console.error('Error:', err);
-      toast.error('Failed to send');
+      toast.error('Failed to send: ' + err.message);
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
       setInputMessage(text);
     } finally {
@@ -226,7 +234,6 @@ const AdvisorMessages = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-100 to-gray-200">
-      {/* Header - WhatsApp style */}
       <div className="bg-gradient-to-r from-green-600 to-teal-600 px-4 py-3 flex items-center gap-3 shadow-md">
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
           <FaUserTie className="text-white text-lg" />
@@ -240,7 +247,6 @@ const AdvisorMessages = () => {
         </div>
       </div>
 
-      {/* Messages Area - WhatsApp style */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2]">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
@@ -252,9 +258,7 @@ const AdvisorMessages = () => {
           Object.entries(messageGroups).map(([date, msgs]) => (
             <div key={date}>
               <div className="text-center my-4">
-                <span className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm">
-                  {date}
-                </span>
+                <span className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm">{date}</span>
               </div>
               {msgs.map((msg, idx) => {
                 const isAdvisor = msg.sender === 'Advisor' || msg.senderId === 'advisor';
@@ -273,7 +277,7 @@ const AdvisorMessages = () => {
                           <span>{formatTime(msg.timestamp)}</span>
                           {!isAdvisor && (
                             msg.status === 'sending' ? (
-                              <FaSpinner className="animate-spin text-gray-400" size={10} />
+                              <FaSpinner className="animate-spin" size={10} />
                             ) : msg.status === 'sent' ? (
                               <FaCheck className="text-gray-400" size={10} />
                             ) : (
@@ -292,7 +296,6 @@ const AdvisorMessages = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - WhatsApp style */}
       <div className="p-3 bg-white border-t">
         <div className="flex gap-2 items-end">
           <textarea
