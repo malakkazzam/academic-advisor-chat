@@ -14,10 +14,12 @@ const StudentChatView = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
   const [showEmailSearch, setShowEmailSearch] = useState(false);
+  const [isConnected, setIsConnected] = useState(true);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
   const intervalRef = useRef(null);
   const isFetching = useRef(false);
+  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
@@ -28,14 +30,16 @@ const StudentChatView = () => {
   }, []);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // جلب جميع الطلاب
+  // ✅ جلب جميع الطلاب (مرة واحدة فقط)
   const fetchAllStudents = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -52,7 +56,7 @@ const StudentChatView = () => {
     return [];
   };
 
-  // البحث عن الطالب بالإيميل
+  // ✅ البحث عن الطالب بالإيميل
   const findStudentByEmail = async (email) => {
     const allStudents = await fetchAllStudents();
     const foundStudent = allStudents.find(s => 
@@ -62,9 +66,13 @@ const StudentChatView = () => {
     return foundStudent;
   };
 
-  // تحميل المحادثة بناءً على الطالب
-  const fetchConversation = async () => {
+  // ✅ تحميل المحادثة محسّن
+  const fetchConversation = async (showLoading = false) => {
     if (!student || !isMounted.current || isFetching.current) return;
+    
+    if (showLoading) {
+      setLoading(true);
+    }
     
     isFetching.current = true;
     
@@ -90,12 +98,14 @@ const StudentChatView = () => {
         
         if (isMounted.current) {
           setMessages(convData.messages || []);
+          setIsConnected(true);
         }
       } else if (isMounted.current) {
         setMessages([]);
       }
     } catch (err) {
       console.error('Error loading conversation:', err);
+      setIsConnected(false);
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -104,7 +114,7 @@ const StudentChatView = () => {
     }
   };
 
-  // البحث عن الطالب بالإيميل والعرض
+  // ✅ البحث عن الطالب بالإيميل والعرض
   const handleSearchStudent = async () => {
     if (!searchEmail.trim()) {
       toast.error('Please enter an email');
@@ -118,15 +128,15 @@ const StudentChatView = () => {
       setStudent(foundStudent);
       setShowEmailSearch(false);
       setSearchEmail('');
-      await fetchConversation();
+      await fetchConversation(true);
       toast.success(`Connected to ${foundStudent.fullName || foundStudent.name || foundStudent.email}`);
     } else {
       toast.error('No student found with this email');
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // إرسال رسالة للطالب
+  // ✅ إرسال رسالة محسّن
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending || !student) return;
     
@@ -161,11 +171,14 @@ const StudentChatView = () => {
         setMessages(prev => prev.map(msg => 
           msg.id === tempMsg.id ? { ...msg, status: 'sent' } : msg
         ));
-        toast.success('Message sent to student');
+        toast.success('Message sent');
         
-        setTimeout(async () => {
-          await fetchConversation();
-        }, 1000);
+        // تحديث المحادثة بعد الإرسال
+        setTimeout(() => {
+          if (isMounted.current) {
+            fetchConversation();
+          }
+        }, 500);
       } else {
         throw new Error('Send failed');
       }
@@ -179,22 +192,33 @@ const StudentChatView = () => {
     }
   };
 
+  // ✅ تحميل أولي باستخدام studentId من الرابط
   useEffect(() => {
-    if (studentId && !student) {
+    if (studentId && !student && !initialLoadDone.current) {
+      initialLoadDone.current = true;
       const loadStudent = async () => {
+        setLoading(true);
         const allStudents = await fetchAllStudents();
         const found = allStudents.find(s => s.id === parseInt(studentId));
         if (found) {
           setStudent(found);
-          fetchConversation();
+          await fetchConversation(true);
+        } else {
+          setLoading(false);
         }
       };
       loadStudent();
     }
   }, [studentId]);
 
+  // ✅ إزالة الـ interval وجلب البيانات فقط عند الحاجة
+  // بدلاً من الـ interval، بنعتمد على جلب البيانات عند:
+  // 1. التحميل الأولي
+  // 2. بعد إرسال رسالة
+  // 3. المستخدم يعمل refresh يدوي
+
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey && !showEmailSearch) {
+    if (e.key === 'Enter' && !e.shiftKey && !showEmailSearch && !sending) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -231,8 +255,9 @@ const StudentChatView = () => {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)]">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-500 mb-4"></div>
+        <p className="text-gray-500 text-sm">Loading conversation...</p>
       </div>
     );
   }
@@ -256,8 +281,8 @@ const StudentChatView = () => {
           </h2>
           {student && (
             <p className="text-white/70 text-xs flex items-center gap-1">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-              {student.email}
+              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></span>
+              {isConnected ? 'Online' : 'Offline'} • {student.email}
             </p>
           )}
         </div>
