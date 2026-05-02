@@ -119,7 +119,7 @@ const AdvisorMessages = () => {
     };
   }, []);
 
-  // ✅ إرسال رسالة - النسخة المعدلة
+  // ✅ إرسال رسالة - باستخدام send-to-advisor بدون AI
   const sendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
@@ -142,30 +142,25 @@ const AdvisorMessages = () => {
     const token = localStorage.getItem('token');
     
     try {
-      // ✅ إرسال مع conversationId ثابت
-      const response = await fetch('/api/Chat/send', {
+      // ✅ استخدام send-to-advisor من غير AI
+      const response = await fetch('/api/Chat/send-to-advisor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          conversationId: ADVISOR_CONVERSATION_ID,
-          message: text,
-          type: 'text'
-        })
+        body: JSON.stringify({ message: text })
       });
       
-      const data = await response.json();
-      console.log('Send response:', data);
-      
       if (response.ok) {
+        const data = await response.json();
+        console.log('Message sent:', data);
+        
         setMessages(prev => prev.map(m => 
           m.id === tempMsg.id ? { ...m, status: 'sent', temp: false } : m
         ));
         toast.success('Message sent to advisor');
         
-        // جلب الرسائل مرة أخرى
         setTimeout(async () => {
           const msgRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -176,11 +171,12 @@ const AdvisorMessages = () => {
           }
         }, 500);
       } else {
-        throw new Error(data.message || 'Send failed');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Send failed');
       }
     } catch (err) {
       console.error('Error:', err);
-      toast.error('Failed to send: ' + err.message);
+      toast.error('Failed to send');
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
       setInputMessage(text);
     } finally {
@@ -249,8 +245,8 @@ const AdvisorMessages = () => {
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2]">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-            <FaCommentDots className="text-5xl mb-3 opacity-40" />
+          <div className="text-center text-gray-500 py-12">
+            <FaCommentDots className="text-5xl mx-auto mb-3 opacity-40" />
             <p className="text-sm">No messages yet</p>
             <p className="text-xs">Send a message to your academic advisor</p>
           </div>
@@ -265,15 +261,9 @@ const AdvisorMessages = () => {
                 return (
                   <div key={msg.id || idx} className={`flex mb-3 ${isAdvisor ? 'justify-start' : 'justify-end'}`}>
                     <div className={`max-w-[70%] ${isAdvisor ? 'ml-2' : 'mr-2'}`}>
-                      <div className={`rounded-2xl px-4 py-2 shadow-sm ${
-                        isAdvisor 
-                          ? 'bg-white text-gray-800 rounded-tl-none' 
-                          : 'bg-[#dcf8c5] text-gray-800 rounded-tr-none'
-                      }`}>
+                      <div className={`rounded-2xl px-4 py-2 shadow-sm ${isAdvisor ? 'bg-white text-gray-800 rounded-tl-none' : 'bg-[#dcf8c5] text-gray-800 rounded-tr-none'}`}>
                         <p className="text-sm break-words">{msg.content}</p>
-                        <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${
-                          isAdvisor ? 'text-gray-400' : 'text-gray-500'
-                        }`}>
+                        <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isAdvisor ? 'text-gray-400' : 'text-gray-500'}`}>
                           <span>{formatTime(msg.timestamp)}</span>
                           {!isAdvisor && (
                             msg.status === 'sending' ? (
