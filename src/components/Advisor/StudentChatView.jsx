@@ -17,13 +17,12 @@ const StudentChatView = () => {
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
-  const intervalRef = useRef(null);
+  const isFetching = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
-      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -52,45 +51,43 @@ const StudentChatView = () => {
     return [];
   };
 
-  // ✅ جلب المحادثة وجلب الرسائل
+  // ✅ جلب المحادثة - مرة واحدة فقط
   const fetchConversation = async () => {
-    if (!student || !isMounted.current) return;
+    if (!student || !isMounted.current || isFetching.current) return;
     
-    setLoading(true);
-    setError(null);
+    isFetching.current = true;
     
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ جلب المحادثة الخاصة بالطالب
       const convRes = await fetch(`/api/Advisor/students/${student.id}/conversations`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      if (convRes.ok) {
+      if (convRes.ok && isMounted.current) {
         const conversations = await convRes.json();
-        console.log('Student conversations:', conversations);
+        console.log('Student conversations loaded once');
         
-        // ✅ إذا كانت المحادثة موجودة
         if (conversations && conversations.messages) {
           setMessages(conversations.messages);
         } else {
           setMessages([]);
         }
-      } else {
-        setMessages([]);
       }
     } catch (err) {
       console.error('Error loading conversation:', err);
-      setError('Failed to load conversation');
+      if (isMounted.current) {
+        setError('Failed to load conversation');
+      }
     } finally {
       if (isMounted.current) {
         setLoading(false);
+        isFetching.current = false;
       }
     }
   };
 
-  // ✅ إرسال رسالة جديدة (تنشئ محادثة تلقائياً)
+  // ✅ إرسال رسالة جديدة
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending || !student) return;
     
@@ -112,7 +109,6 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ إرسال الرسالة عبر endpoint المشرف
       const response = await fetch(`/api/Advisor/students/${student.id}/send-message`, {
         method: 'POST',
         headers: {
@@ -128,12 +124,12 @@ const StudentChatView = () => {
         ));
         toast.success('Message sent to student');
         
-        // ✅ تحديث المحادثة بعد الإرسال
+        // ✅ تحديث المحادثة مرة واحدة فقط بعد الإرسال
         setTimeout(() => {
           if (isMounted.current) {
             fetchConversation();
           }
-        }, 500);
+        }, 1000);
       } else {
         throw new Error('Send failed');
       }
@@ -171,7 +167,7 @@ const StudentChatView = () => {
     }
   };
 
-  // ✅ تحميل الطالب من الرابط
+  // ✅ تحميل الطالب من الرابط (مرة واحدة فقط)
   useEffect(() => {
     if (studentId && !student) {
       const loadStudent = async () => {
@@ -188,22 +184,7 @@ const StudentChatView = () => {
       };
       loadStudent();
     }
-  }, [studentId]);
-
-  // ✅ تحديث تلقائي كل 5 ثواني (لجلب الرسائل الجديدة)
-  useEffect(() => {
-    if (student) {
-      intervalRef.current = setInterval(() => {
-        if (isMounted.current && !sending) {
-          fetchConversation();
-        }
-      }, 5000);
-      
-      return () => {
-        if (intervalRef.current) clearInterval(intervalRef.current);
-      };
-    }
-  }, [student]);
+  }, [studentId]); // ✅ studentId فقط كـ dependency
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !showEmailSearch && !sending) {
