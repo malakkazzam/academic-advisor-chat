@@ -11,7 +11,9 @@ const AdvisorMessages = () => {
   const [previousMessageCount, setPreviousMessageCount] = useState(0);
   const messagesEndRef = useRef(null);
   const intervalRef = useRef(null);
-  const audioRef = useRef(null); // ✅ للصوت
+  const audioRef = useRef(null);
+  const isMounted = useRef(true);
+  const isFetching = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -21,9 +23,8 @@ const AdvisorMessages = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ تحميل الصوت
+  // تحميل الصوت
   useEffect(() => {
-    // استخدام رابط مباشر لصوت قصير (جرب أي رابط من دول)
     audioRef.current = new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3');
     return () => {
       if (audioRef.current) {
@@ -33,62 +34,118 @@ const AdvisorMessages = () => {
     };
   }, []);
 
-  const loadConversation = () => {
+  // ✅ استخدام نفس Conversation ID اللي يستخدمه المشرف (ID 37)
+  const ADVISOR_CONVERSATION_ID = 37;
+
+  // ✅ جلب المحادثة بشكل آمن
+  const loadConversation = async () => {
+    if (!isMounted.current || isFetching.current) return;
+    
+    isFetching.current = true;
     const token = localStorage.getItem('token');
     
-    fetch('/api/Chat/conversations', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-    .then(res => res.json())
-    .then(conversations => {
-      const advisorConv = conversations.find(c => 
-        c.title === 'محادثة مع المشرف الأكاديمي'
-      );
+    try {
+      const response = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       
-      if (advisorConv && advisorConv.id) {
-        fetch(`/api/Chat/conversations/${advisorConv.id}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        })
-        .then(res => res.json())
-        .then(convData => {
-          const newMessages = convData.messages || [];
-          
-          // ✅ تشغيل الصوت عند وصول رسالة جديدة
-          if (newMessages.length > previousMessageCount && previousMessageCount > 0) {
-            if (audioRef.current) {
-              audioRef.current.play().catch(e => console.log('Audio play failed:', e));
-            }
-            toast.success('New message from advisor!');
+      if (response.ok) {
+        const convData = await response.json();
+        const newMessages = convData.messages || [];
+        
+        // تشغيل الصوت عند وصول رسالة جديدة من المشرف
+        if (newMessages.length > previousMessageCount && previousMessageCount > 0 && isMounted.current) {
+          if (audioRef.current) {
+            audioRef.current.play().catch(e => console.log('Audio play failed:', e));
           }
-          
+          toast.success('New message from advisor!');
+        }
+        
+        if (isMounted.current) {
           setPreviousMessageCount(newMessages.length);
           setMessages(newMessages);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error('Error:', err);
-          setLoading(false);
+        }
+      } else if (response.status === 404) {
+        // إذا لم توجد المحادثة، ننشئ واحدة جديدة
+        const createRes = await fetch('/api/Chat/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            conversationId: null,
+            message: "Starting advisor conversation",
+            type: 'text'
+          })
         });
-      } else {
-        setMessages([]);
-        setLoading(false);
+        if (createRes.ok) {
+          const newConv = await createRes.json();
+          console.log('New conversation created:', newConv.conversationId || newConv.id);
+        }
+        if (isMounted.current) {
+          setMessages([]);
+        }
       }
-    })
-    .catch(err => {
-      console.error('Error:', err);
-      setLoading(false);
-    });
+    } catch (err) {
+      console.error('Error loading conversation:', err);
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+        isFetching.current = false;
+      }
+    }
   };
 
+  // ✅ تحديث دوري آمن
+  const updateMessages = async () => {
+    if (!isMounted.current) return;
+    const token = localStorage.getItem('token');
+    
+    try {
+      const response = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const convData = await response.json();
+        const newMessages = convData.messages || [];
+        
+        if (newMessages.length > previousMessageCount && previousMessageCount > 0 && isMounted.current) {
+          if (audioRef.current) {
+            audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+          }
+          toast.success('New message from advisor!');
+        }
+        
+        if (isMounted.current) {
+          setPreviousMessageCount(newMessages.length);
+          setMessages(newMessages);
+        }
+      }
+    } catch (err) {
+      console.error('Update error:', err);
+    }
+  };
+
+  // ✅ useEffect الآمن للتحميل الأولي
   useEffect(() => {
-    loadConversation();
-    intervalRef.current = setInterval(loadConversation, 5000);
+    isMounted.current = true;
+    
+    const init = async () => {
+      await loadConversation();
+    };
+    init();
+    
+    intervalRef.current = setInterval(updateMessages, 5000);
+    
     return () => {
+      isMounted.current = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
-  const sendMessage = () => {
+  // ✅ إرسال رسالة
+  const sendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
     setSending(true);
@@ -109,34 +166,38 @@ const AdvisorMessages = () => {
 
     const token = localStorage.getItem('token');
     
-    fetch('/api/Chat/send-to-advisor', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ message: text })
-    })
-    .then(res => {
-      if (res.ok) {
+    try {
+      // ✅ إرسال إلى نفس Conversation ID (37)
+      const response = await fetch('/api/Chat/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          conversationId: ADVISOR_CONVERSATION_ID,
+          message: text,
+          type: 'text'
+        })
+      });
+      
+      if (response.ok) {
         setMessages(prev => prev.map(m => 
           m.id === tempMsg.id ? { ...m, status: 'sent', temp: false } : m
         ));
         toast.success('Message sent');
-        setTimeout(() => loadConversation(), 500);
+        setTimeout(() => updateMessages(), 500);
       } else {
         throw new Error('Send failed');
       }
-    })
-    .catch(err => {
+    } catch (err) {
       console.error('Error:', err);
       toast.error('Failed to send');
       setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
       setInputMessage(text);
-    })
-    .finally(() => {
+    } finally {
       setSending(false);
-    });
+    }
   };
 
   const handleKeyPress = (e) => {

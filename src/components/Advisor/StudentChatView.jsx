@@ -12,12 +12,10 @@ const StudentChatView = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
-  const [advisorConversationId, setAdvisorConversationId] = useState(null);
   const messagesEndRef = useRef(null);
-  const isMounted = useRef(true);
   const intervalRef = useRef(null);
+  const isMounted = useRef(true);
 
-  // ✅ تعريف scrollToBottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -34,97 +32,107 @@ const StudentChatView = () => {
     };
   }, []);
 
-  // ✅ جلب أو إنشاء محادثة المشرف
-  const getOrCreateAdvisorConversation = async () => {
-    const token = localStorage.getItem('token');
+  // ✅ استخدام ID ثابت للمحادثة (نفس ID اللي عند الطالب)
+  const ADVISOR_CONVERSATION_ID = 37;
+
+  // ✅ دالة جلب البيانات الأولية
+  const fetchInitialData = async () => {
+    if (!studentId || !isMounted.current) return;
     
     try {
-      const convRes = await fetch('/api/Chat/conversations', {
+      const token = localStorage.getItem('token');
+      
+      // جلب رسائل المحادثة
+      const msgRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const conversations = await convRes.json();
       
-      let advisorConv = conversations.find(c => 
-        c.title === 'Advisor Chat' || 
-        c.title === 'محادثة مع المشرف الأكاديمي'
-      );
-      
-      if (!advisorConv) {
-        const createRes = await fetch('/api/Chat/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            conversationId: null,
-            message: "Advisor conversation",
-            type: 'text'
-          })
-        });
-        const newConv = await createRes.json();
-        advisorConv = { id: newConv.conversationId || newConv.id };
+      if (msgRes.ok && isMounted.current) {
+        const convData = await msgRes.json();
+        setMessages(convData.messages || []);
+      } else if (msgRes.status === 404 && isMounted.current) {
+        // إذا لم توجد المحادثة، ننشئ واحدة جديدة
+        await createNewConversation();
+        setMessages([]);
+      } else if (isMounted.current) {
+        setMessages([]);
       }
       
-      return advisorConv.id;
+      // جلب معلومات الطالب
+      const studentsRes = await fetch('/api/Advisor/students', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (studentsRes.ok && isMounted.current) {
+        const students = await studentsRes.json();
+        const foundStudent = students.find(s => s.id === parseInt(studentId));
+        if (foundStudent) setStudent(foundStudent);
+      }
     } catch (err) {
-      console.error('Error getting conversation:', err);
-      return null;
+      console.error('Error loading data:', err);
+      if (isMounted.current) toast.error('Failed to load conversation');
+    } finally {
+      if (isMounted.current) setLoading(false);
     }
   };
 
-  // ✅ تحميل البيانات
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!studentId) return;
-      
-      try {
-        const token = localStorage.getItem('token');
-        
-        const convId = await getOrCreateAdvisorConversation();
-        if (convId) {
-          setAdvisorConversationId(convId);
-          
-          const msgRes = await fetch(`/api/Chat/conversations/${convId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const convData = await msgRes.json();
-          setMessages(convData.messages || []);
-        }
-        
-        const studentsRes = await fetch('/api/Advisor/students', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const students = await studentsRes.json();
-        const foundStudent = students.find(s => s.id === parseInt(studentId));
-        
-        if (isMounted.current && foundStudent) {
-          setStudent(foundStudent);
-        }
-      } catch (err) {
-        console.error('Error:', err);
-      } finally {
-        if (isMounted.current) setLoading(false);
-      }
-    };
+  // ✅ إنشاء محادثة جديدة
+  const createNewConversation = async () => {
+    const token = localStorage.getItem('token');
+    try {
+      await fetch('/api/Chat/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          conversationId: null,
+          message: "Starting conversation",
+          type: 'text'
+        })
+      });
+    } catch (err) {
+      console.error('Error creating conversation:', err);
+    }
+  };
 
-    fetchData();
+  // ✅ تحديث الرسائل بشكل دوري
+  const updateMessagesPeriodically = async () => {
+    if (!isMounted.current) return;
+    const token = localStorage.getItem('token');
+    
+    try {
+      const msgRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (msgRes.ok && isMounted.current) {
+        const convData = await msgRes.json();
+        setMessages(convData.messages || []);
+      }
+    } catch (err) {
+      console.error("Periodic update error:", err);
+    }
+  };
+
+  // ✅ التعديل المهم هنا - استخدام async function داخل useEffect
+  useEffect(() => {
+    let isActive = true;
+    
+    const initialize = async () => {
+      if (!isActive) return;
+      await fetchInitialData();
+    };
+    
+    initialize();
     
     intervalRef.current = setInterval(() => {
-      if (isMounted.current && advisorConversationId) {
-        const updateMessages = async () => {
-          const token = localStorage.getItem('token');
-          const msgRes = await fetch(`/api/Chat/conversations/${advisorConversationId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const convData = await msgRes.json();
-          if (isMounted.current) setMessages(convData.messages || []);
-        };
-        updateMessages();
+      if (isActive) {
+        updateMessagesPeriodically();
       }
     }, 5000);
     
     return () => {
+      isActive = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [studentId]);
@@ -157,7 +165,7 @@ const StudentChatView = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          conversationId: advisorConversationId,
+          conversationId: ADVISOR_CONVERSATION_ID,
           message: messageText,
           type: 'text'
         })
@@ -165,13 +173,7 @@ const StudentChatView = () => {
       
       if (response.ok) {
         toast.success('Message sent');
-        setTimeout(async () => {
-          const msgRes = await fetch(`/api/Chat/conversations/${advisorConversationId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          });
-          const convData = await msgRes.json();
-          setMessages(convData.messages || []);
-        }, 500);
+        await updateMessagesPeriodically();
       } else {
         throw new Error('Send failed');
       }
