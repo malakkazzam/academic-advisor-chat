@@ -119,7 +119,7 @@ const AdvisorMessages = () => {
     };
   }, []);
 
-  // ✅ إرسال رسالة - باستخدام send-to-advisor بدون AI
+  // ✅ إرسال رسالة - النسخة النهائية
   const sendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
@@ -142,37 +142,41 @@ const AdvisorMessages = () => {
     const token = localStorage.getItem('token');
     
     try {
-      // ✅ استخدام send-to-advisor من غير AI
-      const response = await fetch('/api/Chat/send-to-advisor', {
+      // ✅ استخدام /api/Chat/send مع conversationId ثابت
+      const response = await fetch('/api/Chat/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ message: text })
+        body: JSON.stringify({
+          conversationId: ADVISOR_CONVERSATION_ID,
+          message: text,
+          type: 'text'
+        })
       });
       
+      const data = await response.json();
+      console.log('Send response:', data);
+      
       if (response.ok) {
-        const data = await response.json();
-        console.log('Message sent:', data);
-        
         setMessages(prev => prev.map(m => 
-          m.id === tempMsg.id ? { ...m, status: 'sent', temp: false } : m
+          m.id === tempMsg.id ? { ...m, status: 'sent', temp: false, serverId: data.id } : m
         ));
-        toast.success('Message sent to advisor');
+        toast.success('Message sent');
         
+        // جلب المحادثة كاملة
         setTimeout(async () => {
-          const msgRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
+          const convRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
-          const convData = await msgRes.json();
-          if (isMounted.current) {
+          if (convRes.ok) {
+            const convData = await convRes.json();
             setMessages(convData.messages || []);
           }
         }, 500);
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Send failed');
+        throw new Error(data.message || 'Send failed');
       }
     } catch (err) {
       console.error('Error:', err);
@@ -266,13 +270,9 @@ const AdvisorMessages = () => {
                         <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isAdvisor ? 'text-gray-400' : 'text-gray-500'}`}>
                           <span>{formatTime(msg.timestamp)}</span>
                           {!isAdvisor && (
-                            msg.status === 'sending' ? (
-                              <FaSpinner className="animate-spin" size={10} />
-                            ) : msg.status === 'sent' ? (
-                              <FaCheck className="text-gray-400" size={10} />
-                            ) : (
-                              <FaCheckDouble className="text-blue-500" size={10} />
-                            )
+                            msg.status === 'sending' ? <FaSpinner className="animate-spin" size={10} /> :
+                            msg.status === 'sent' ? <FaCheck className="text-gray-400" size={10} /> :
+                            <FaCheckDouble className="text-blue-500" size={10} />
                           )}
                         </div>
                       </div>
