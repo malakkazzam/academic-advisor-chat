@@ -12,6 +12,7 @@ const StudentChatView = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
+  const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
 
@@ -30,6 +31,7 @@ const StudentChatView = () => {
     scrollToBottom();
   }, [messages]);
 
+  // ✅ جلب المحادثة الصحيحة بين المشرف وهذا الطالب
   useEffect(() => {
     const fetchConversation = async () => {
       if (!studentId) return;
@@ -37,7 +39,32 @@ const StudentChatView = () => {
       try {
         const token = localStorage.getItem('token');
         
-        // جيب معلومات الطالب
+        // 1. جيب كل المحادثات
+        const convRes = await fetch('/api/Chat/conversations', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const conversations = await convRes.json();
+        
+        // 2. دور على المحادثة اللي فيها المشرف (Advisor Chat)
+        const advisorChat = conversations.find(c => 
+          c.title === 'محادثة مع المشرف الأكاديمي' ||
+          c.title?.toLowerCase().includes('advisor')
+        );
+        
+        if (advisorChat && advisorChat.id) {
+          setConversationId(advisorChat.id);
+          
+          // 3. جيب رسايل المحادثة
+          const msgRes = await fetch(`/api/Chat/conversations/${advisorChat.id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const convData = await msgRes.json();
+          setMessages(convData.messages || []);
+        } else {
+          setMessages([]);
+        }
+        
+        // 4. جيب معلومات الطالب
         const studentsRes = await fetch('/api/Advisor/students', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -46,16 +73,6 @@ const StudentChatView = () => {
         
         if (isMounted.current && foundStudent) {
           setStudent(foundStudent);
-        }
-        
-        // جيب المحادثة
-        const convRes = await fetch(`/api/Advisor/students/${studentId}/conversations`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (convRes.ok && isMounted.current) {
-          const data = await convRes.json();
-          setMessages(data.messages || []);
         }
       } catch (err) {
         console.error('Error:', err);
@@ -69,6 +86,7 @@ const StudentChatView = () => {
     fetchConversation();
   }, [studentId]);
 
+  // ✅ إرسال رسالة للمحادثة الصحيحة
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
     
@@ -89,6 +107,7 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
+      // ✅ إرسال إلى endpoint الطالب مع إضافة conversationId
       const response = await fetch(`/api/Advisor/students/${studentId}/send-message`, {
         method: 'POST',
         headers: {
@@ -99,7 +118,18 @@ const StudentChatView = () => {
       });
       
       if (response.ok) {
-        toast.success('Message sent');
+        toast.success('Message sent to student');
+        
+        // ✅ تحديث المحادثة بعد الإرسال
+        setTimeout(async () => {
+          if (conversationId) {
+            const msgRes = await fetch(`/api/Chat/conversations/${conversationId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const convData = await msgRes.json();
+            setMessages(convData.messages || []);
+          }
+        }, 500);
       } else {
         throw new Error('Send failed');
       }
