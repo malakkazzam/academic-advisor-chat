@@ -1,7 +1,7 @@
 // src/components/Advisor/StudentChatView.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner, FaCheck, FaCheckDouble } from 'react-icons/fa';
+import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner, FaCheck,  } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const StudentChatView = () => {
@@ -12,6 +12,7 @@ const StudentChatView = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
+  const [ setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
   const intervalRef = useRef(null);
@@ -41,19 +42,21 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ جيب كل المحادثات
+      // جيب كل المحادثات
       const convRes = await fetch('/api/Chat/conversations', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const conversations = await convRes.json();
       
-      // البحث عن محادثة بها ID الطالب
+      // البحث عن محادثة مع هذا الطالب
       const studentConv = conversations.find(c => 
         c.title?.includes(`Student ${studentId}`) ||
-        c.title?.includes(studentId.toString())
+        c.title?.includes(studentId.toString()) ||
+        c.title === 'محادثة مع المشرف الأكاديمي'
       );
       
       if (studentConv?.id) {
+        setConversationId(studentConv.id);
         const msgRes = await fetch(`/api/Chat/conversations/${studentConv.id}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -66,41 +69,19 @@ const StudentChatView = () => {
         setMessages([]);
       }
       
-      // ✅ إصلاح: استخدمي endpoint جلب كل الطلاب ثم تصفية
+      // جيب معلومات الطالب
       const studentsRes = await fetch('/api/Advisor/students', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (studentsRes.ok) {
         const students = await studentsRes.json();
-        const foundStudent = students.find(s => s.id === parseInt(studentId) || s.id === studentId);
+        const foundStudent = students.find(s => s.id === parseInt(studentId));
         if (isMounted.current && foundStudent) {
           setStudent(foundStudent);
-        } else if (isMounted.current) {
-          // إذا لم يتم العثور على الطالب، نضبط بيانات وهمية
-          setStudent({ 
-            id: studentId, 
-            fullName: `Student ${studentId}`, 
-            email: `student${studentId}@university.edu` 
-          });
         }
-      } else if (isMounted.current) {
-        // Fallback: بيانات وهمية
-        setStudent({ 
-          id: studentId, 
-          fullName: `Student ${studentId}`, 
-          email: `student${studentId}@university.edu` 
-        });
       }
     } catch (err) {
       console.error('Error loading conversation:', err);
-      if (isMounted.current) {
-        // Fallback: بيانات وهمية
-        setStudent({ 
-          id: studentId, 
-          fullName: `Student ${studentId}`, 
-          email: `student${studentId}@university.edu` 
-        });
-      }
     } finally {
       if (isMounted.current) {
         setLoading(false);
@@ -119,7 +100,7 @@ const StudentChatView = () => {
       if (isMounted.current) {
         fetchConversation();
       }
-    }, 5000);
+    }, 3000);
     
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -133,6 +114,7 @@ const StudentChatView = () => {
     const messageText = inputMessage;
     setInputMessage('');
     
+    // ✅ إضافة الرسالة محلياً فوراً
     const tempMsg = {
       id: Date.now(),
       content: messageText,
@@ -147,7 +129,7 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ استخدام endpoint إرسال الرسالة
+      // ✅ إرسال الرسالة
       const response = await fetch(`/api/Advisor/students/${studentId}/send-message`, {
         method: 'POST',
         headers: {
@@ -158,19 +140,23 @@ const StudentChatView = () => {
       });
       
       if (response.ok) {
+        // ✅ تحديث حالة الرسالة
         setMessages(prev => prev.map(msg => 
           msg.id === tempMsg.id ? { ...msg, status: 'sent' } : msg
         ));
         toast.success('Message sent');
-        setTimeout(() => {
-          if (isMounted.current) fetchConversation();
-        }, 500);
+        
+        // ✅ جلب المحادثة مرة أخرى بعد التأخير
+        setTimeout(async () => {
+          await fetchConversation();
+        }, 1000);
       } else {
         throw new Error('Send failed');
       }
     } catch (err) {
       console.error('Error sending message:', err);
       toast.error('Failed to send message');
+      // ✅ إزالة الرسالة لو فشلت
       setMessages(prev => prev.filter(msg => msg.id !== tempMsg.id));
       setInputMessage(messageText);
     } finally {
@@ -224,7 +210,7 @@ const StudentChatView = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-100 to-gray-200">
-      {/* Header - WhatsApp style */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-teal-600 px-4 py-3 flex items-center gap-3 shadow-md">
         <button
           onClick={() => navigate('/advisor')}
@@ -241,18 +227,18 @@ const StudentChatView = () => {
           </h2>
           <p className="text-white/70 text-xs flex items-center gap-1">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Student
+            Student • {messages.length} messages
           </p>
         </div>
       </div>
 
-      {/* Messages Area - WhatsApp style */}
+      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2]">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
             <FaUserGraduate className="text-5xl mb-3 opacity-40" />
             <p className="text-sm">No messages yet</p>
-            <p className="text-xs">Start the conversation with the student!</p>
+            <p className="text-xs">Type a message to start the conversation</p>
           </div>
         ) : (
           Object.entries(messageGroups).map(([date, msgs]) => (
@@ -277,14 +263,11 @@ const StudentChatView = () => {
                           isAdvisor ? 'text-gray-500' : 'text-gray-400'
                         }`}>
                           <span>{formatTime(msg.timestamp)}</span>
-                          {isAdvisor && (
-                            msg.status === 'sending' ? (
-                              <FaSpinner className="animate-spin text-gray-400" size={10} />
-                            ) : msg.status === 'sent' ? (
-                              <FaCheck className="text-gray-400" size={10} />
-                            ) : (
-                              <FaCheckDouble className="text-blue-500" size={10} />
-                            )
+                          {isAdvisor && msg.status === 'sending' && (
+                            <FaSpinner className="animate-spin" size={10} />
+                          )}
+                          {isAdvisor && msg.status === 'sent' && (
+                            <FaCheck className="text-gray-400" size={10} />
                           )}
                         </div>
                       </div>
@@ -298,7 +281,7 @@ const StudentChatView = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - WhatsApp style */}
+      {/* Input Area */}
       <div className="p-3 bg-white border-t">
         <div className="flex gap-2 items-end">
           <textarea
