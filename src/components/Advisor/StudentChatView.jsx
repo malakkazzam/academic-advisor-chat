@@ -39,22 +39,22 @@ const StudentChatView = () => {
       try {
         const token = localStorage.getItem('token');
         
-        // 1. جيب كل المحادثات عشان نلاقي محادثة المشرف
+        // جيب كل المحادثات
         const convRes = await fetch('/api/Chat/conversations', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const allConversations = await convRes.json();
+        const conversations = await convRes.json();
         
-        // 2. دور على المحادثة اللي عنوانها "محادثة مع المشرف الأكاديمي"
-        const advisorConversation = allConversations.find(c => 
-          c.title === 'محادثة مع المشرف الأكاديمي'
+        // دور على المحادثة اللي عنوانها "محادثة المشرف الأكاديمي"
+        const advisorChat = conversations.find(c => 
+          c.title === 'محادثة المشرف الأكاديمي'
         );
         
-        if (advisorConversation) {
-          setAdvisorConversationId(advisorConversation.id);
+        if (advisorChat) {
+          setAdvisorConversationId(advisorChat.id);
           
-          // 3. جيب رسايل المحادثة دي
-          const msgRes = await fetch(`/api/Chat/conversations/${advisorConversation.id}`, {
+          // جيب رسايل المحادثة
+          const msgRes = await fetch(`/api/Chat/conversations/${advisorChat.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const convData = await msgRes.json();
@@ -63,7 +63,7 @@ const StudentChatView = () => {
           setMessages([]);
         }
         
-        // 4. جيب معلومات الطالب
+        // جيب معلومات الطالب
         const studentsRes = await fetch('/api/Advisor/students', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -85,7 +85,7 @@ const StudentChatView = () => {
     fetchData();
   }, [studentId]);
 
-  // ✅ إرسال رسالة للمحادثة الصحيحة باستخدام sendMessage العادي
+  // ✅ إرسال رسالة للمحادثة الصحيحة
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
     
@@ -106,7 +106,7 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ استخدم conversationId الصحيح (محادثة المشرف)
+      // ✅ استخدم المحادثة الصحيحة (ID 37)
       const response = await fetch('/api/Chat/send', {
         method: 'POST',
         headers: {
@@ -114,7 +114,7 @@ const StudentChatView = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          conversationId: advisorConversationId,
+          conversationId: advisorConversationId,  // ID المحادثة الصحيح
           message: messageText,
           type: 'text'
         })
