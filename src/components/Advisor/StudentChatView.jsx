@@ -1,8 +1,7 @@
 // src/components/Advisor/StudentChatView.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { advisorAPI } from '../../services/api';
-import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner } from 'react-icons/fa';
+import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner, FaCheck, FaCheckDouble } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const StudentChatView = () => {
@@ -13,13 +12,17 @@ const StudentChatView = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
+  // ❌ شيلنا conversationId
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
+  const intervalRef = useRef(null);
+  const isFetching = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -31,73 +34,127 @@ const StudentChatView = () => {
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    const fetchConversation = async () => {
-      if (!studentId) return;
+  const fetchConversation = async () => {
+    if (!studentId || !isMounted.current || isFetching.current) return;
+    
+    isFetching.current = true;
+    
+    try {
+      const token = localStorage.getItem('token');
       
-      try {
-        const response = await advisorAPI.getStudentConversations(studentId);
+      const convRes = await fetch('/api/Chat/conversations', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const conversations = await convRes.json();
+      
+      const studentConv = conversations.find(c => 
+        c.title?.includes(`Student ${studentId}`) ||
+        c.title?.includes(studentId.toString())
+      );
+      
+      if (studentConv?.id) {
+        // ✅ استخدام conversationId مباشرة من دون تخزينه
+        const msgRes = await fetch(`/api/Chat/conversations/${studentConv.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const convData = await msgRes.json();
+        
         if (isMounted.current) {
-          setMessages(response.data?.messages || []);
-          setStudent(response.data?.student);
+          setMessages(convData.messages || []);
         }
-      } catch (err) {
-        console.error('Error loading conversation:', err);
+      } else if (isMounted.current) {
+        setMessages([]);
+      }
+      
+      const studentRes = await fetch(`/api/Advisor/students/${studentId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (studentRes.ok) {
+        const studentData = await studentRes.json();
         if (isMounted.current) {
-          toast.error('Failed to load conversation');
-        }
-      } finally {
-        if (isMounted.current) {
-          setLoading(false);
+          setStudent(studentData);
         }
       }
-    };
+    } catch (err) {
+      console.error('Error loading conversation:', err);
+      if (isMounted.current) {
+        toast.error('Failed to load conversation');
+      }
+    } finally {
+      if (isMounted.current) {
+        setLoading(false);
+        isFetching.current = false;
+      }
+    }
+  };
 
-    fetchConversation();
+  useEffect(() => {
+    const init = async () => {
+      await fetchConversation();
+    };
+    init();
+    
+    intervalRef.current = setInterval(() => {
+      if (isMounted.current) {
+        fetchConversation();
+      }
+    }, 5000);
+    
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [studentId]);
 
-  // ✅ Modified: send message as plain string (not object)
- const handleSendMessage = async () => {
-  if (!inputMessage.trim() || sending) return;
-  
-  setSending(true);
-  
-  try {
-    const token = localStorage.getItem('token');
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || sending) return;
     
-    // ✅ استخدمي fetch مباشرة
-    const response = await fetch(`https://siraj.runasp.net/api/Advisor/students/${studentId}/send-message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(inputMessage)  // ✅ string مباشرة
-    });
+    setSending(true);
+    const messageText = inputMessage;
+    setInputMessage('');
     
-    if (response.ok) {
-      const newMessage = {
-        id: Date.now(),
-        content: inputMessage,
-        senderId: 'advisor',
-        sender: 'Advisor',
-        timestamp: new Date().toISOString()
-      };
+    const tempMsg = {
+      id: Date.now(),
+      content: messageText,
+      senderId: 'advisor',
+      sender: 'Advisor',
+      timestamp: new Date().toISOString(),
+      status: 'sending'
+    };
+    setMessages(prev => [...prev, tempMsg]);
+    scrollToBottom();
+    
+    try {
+      const token = localStorage.getItem('token');
       
-      setMessages(prev => [...prev, newMessage]);
-      setInputMessage('');
-      toast.success('Message sent');
-      setTimeout(scrollToBottom, 100);
-    } else {
+      const response = await fetch(`/api/Advisor/students/${studentId}/send-message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(messageText)
+      });
+      
+      if (response.ok) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempMsg.id ? { ...msg, status: 'sent' } : msg
+        ));
+        toast.success('Message sent');
+        setTimeout(() => {
+          if (isMounted.current) fetchConversation();
+        }, 500);
+      } else {
+        throw new Error('Send failed');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
       toast.error('Failed to send message');
+      setMessages(prev => prev.filter(msg => msg.id !== tempMsg.id));
+      setInputMessage(messageText);
+    } finally {
+      setSending(false);
     }
-  } catch (err) {
-    console.error('Error sending message:', err);
-    toast.error('Failed to send message');
-  } finally {
-    setSending(false);
-  }
-};
+  };
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -107,8 +164,33 @@ const StudentChatView = () => {
   };
 
   const formatTime = (date) => {
+    if (!date) return '';
     return new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    const d = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString();
+  };
+
+  const groupMessagesByDate = () => {
+    const groups = {};
+    messages.forEach(msg => {
+      const date = formatDate(msg.timestamp);
+      if (!groups[date]) groups[date] = [];
+      groups[date].push(msg);
+    });
+    return groups;
+  };
+
+  const messageGroups = groupMessagesByDate();
 
   if (loading) {
     return (
@@ -119,82 +201,100 @@ const StudentChatView = () => {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-3 sm:py-4 flex items-center gap-3 shadow-md">
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-100 to-gray-200">
+      {/* Header - WhatsApp style */}
+      <div className="bg-gradient-to-r from-green-600 to-teal-600 px-4 py-3 flex items-center gap-3 shadow-md">
         <button
           onClick={() => navigate('/advisor')}
           className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all"
         >
           <FaArrowLeft size={18} />
         </button>
-        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 flex items-center justify-center">
-          <FaUserGraduate className="text-white text-sm sm:text-base" />
+        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+          <FaUserGraduate className="text-white text-lg" />
         </div>
-        <div>
-          <h2 className="font-semibold text-white text-sm sm:text-base">
+        <div className="flex-1">
+          <h2 className="font-semibold text-white">
             {student?.fullName || student?.name || `Student ${studentId}`}
           </h2>
-          <p className="text-white/70 text-[10px] sm:text-xs">{student?.email}</p>
+          <p className="text-white/70 text-xs flex items-center gap-1">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+            Online • Student
+          </p>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4">
+      {/* Messages Area - WhatsApp style */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2]">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
-            <FaUserGraduate className="text-4xl mb-3 opacity-30" />
+          <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+            <FaUserGraduate className="text-5xl mb-3 opacity-40" />
             <p className="text-sm">No messages yet</p>
-            <p className="text-xs">Start the conversation!</p>
+            <p className="text-xs">Start the conversation with the student!</p>
           </div>
         ) : (
-          messages.map((message, index) => (
-            <div
-              key={message.id || index}
-              className={`flex ${message.senderId === 'advisor' || message.sender === 'Advisor' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div className={`max-w-[80%] sm:max-w-[70%] ${message.senderId === 'advisor' || message.sender === 'Advisor' ? 'items-end' : 'items-start'}`}>
-                <div className={`rounded-2xl px-3 py-2 sm:px-4 sm:py-3 ${
-                  message.senderId === 'advisor' || message.sender === 'Advisor'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
-                    : 'bg-white border border-gray-200 text-gray-800'
-                }`}>
-                  <p className="text-xs sm:text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                </div>
-                <p className="text-[10px] sm:text-xs text-gray-400 mt-1">
-                  {formatTime(message.timestamp || message.createdAt || new Date())}
-                </p>
+          Object.entries(messageGroups).map(([date, msgs]) => (
+            <div key={date}>
+              <div className="text-center my-4">
+                <span className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm">
+                  {date}
+                </span>
               </div>
+              {msgs.map((msg, idx) => {
+                const isAdvisor = msg.senderId === 'advisor' || msg.sender === 'Advisor';
+                return (
+                  <div key={msg.id || idx} className={`flex mb-3 ${isAdvisor ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[70%] ${isAdvisor ? 'mr-2' : 'ml-2'}`}>
+                      <div className={`rounded-2xl px-4 py-2 shadow-sm ${
+                        isAdvisor 
+                          ? 'bg-[#dcf8c5] text-gray-800 rounded-tr-none' 
+                          : 'bg-white text-gray-800 rounded-tl-none'
+                      }`}>
+                        <p className="text-sm break-words">{msg.content}</p>
+                        <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${
+                          isAdvisor ? 'text-gray-500' : 'text-gray-400'
+                        }`}>
+                          <span>{formatTime(msg.timestamp)}</span>
+                          {isAdvisor && (
+                            msg.status === 'sending' ? (
+                              <FaSpinner className="animate-spin text-gray-400" size={10} />
+                            ) : msg.status === 'sent' ? (
+                              <FaCheck className="text-gray-400" size={10} />
+                            ) : (
+                              <FaCheckDouble className="text-blue-500" size={10} />
+                            )
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           ))
         )}
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
-      <div className="p-3 sm:p-4 border-t border-gray-200 bg-white/95 backdrop-blur-sm">
-        <div className="flex gap-2">
+      {/* Input Area - WhatsApp style */}
+      <div className="p-3 bg-white border-t">
+        <div className="flex gap-2 items-end">
           <textarea
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            className="flex-1 input-field resize-none py-2 px-3 text-sm rounded-xl border border-gray-200 focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 transition-all duration-200"
-            rows={window.innerWidth < 640 ? 1 : 2}
+            placeholder="Type a message..."
+            className="flex-1 resize-none p-3 text-sm border-0 rounded-2xl bg-gray-100 focus:bg-white focus:ring-1 focus:ring-green-500 focus:outline-none transition-all"
+            rows={1}
+            style={{ minHeight: '44px', maxHeight: '100px' }}
             disabled={sending}
-            style={{ minHeight: '40px' }}
           />
           <button
             onClick={handleSendMessage}
             disabled={!inputMessage.trim() || sending}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 sm:px-5 rounded-xl flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md"
+            className="bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center disabled:opacity-50 hover:bg-green-700 transition-all shadow-md"
           >
-            {sending ? (
-              <FaSpinner className="animate-spin" size={16} />
-            ) : (
-              <FaPaperPlane size={16} />
-            )}
-            <span className="hidden sm:inline text-sm">Send</span>
+            {sending ? <FaSpinner className="animate-spin" size={18} /> : <FaPaperPlane size={18} />}
           </button>
         </div>
       </div>
