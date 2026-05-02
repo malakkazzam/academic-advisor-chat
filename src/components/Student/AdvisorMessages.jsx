@@ -1,4 +1,7 @@
-// src/components/Student/AdvisorMessages.jsx
+// ============================================
+// 1. src/components/Student/AdvisorMessages.jsx (كامل)
+// ============================================
+
 import { useState, useEffect, useRef } from 'react';
 import { FaUserTie, FaPaperPlane, FaSpinner, FaCommentDots, FaCheck, FaCheckDouble } from 'react-icons/fa';
 import toast from 'react-hot-toast';
@@ -37,7 +40,7 @@ const AdvisorMessages = () => {
   // ✅ استخدام نفس Conversation ID اللي يستخدمه المشرف (ID 37)
   const ADVISOR_CONVERSATION_ID = 37;
 
-  // ✅ جلب المحادثة بشكل آمن
+  // ✅ جلب المحادثة
   const loadConversation = async () => {
     if (!isMounted.current || isFetching.current) return;
     
@@ -53,7 +56,7 @@ const AdvisorMessages = () => {
         const convData = await response.json();
         const newMessages = convData.messages || [];
         
-        // تشغيل الصوت عند وصول رسالة جديدة من المشرف
+        // تشغيل الصوت عند وصول رسالة جديدة
         if (newMessages.length > previousMessageCount && previousMessageCount > 0 && isMounted.current) {
           if (audioRef.current) {
             audioRef.current.play().catch(e => console.log('Audio play failed:', e));
@@ -65,27 +68,8 @@ const AdvisorMessages = () => {
           setPreviousMessageCount(newMessages.length);
           setMessages(newMessages);
         }
-      } else if (response.status === 404) {
-        // إذا لم توجد المحادثة، ننشئ واحدة جديدة
-        const createRes = await fetch('/api/Chat/send', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            conversationId: null,
-            message: "Starting advisor conversation",
-            type: 'text'
-          })
-        });
-        if (createRes.ok) {
-          const newConv = await createRes.json();
-          console.log('New conversation created:', newConv.conversationId || newConv.id);
-        }
-        if (isMounted.current) {
-          setMessages([]);
-        }
+      } else if (response.status === 404 && isMounted.current) {
+        setMessages([]);
       }
     } catch (err) {
       console.error('Error loading conversation:', err);
@@ -97,7 +81,7 @@ const AdvisorMessages = () => {
     }
   };
 
-  // ✅ تحديث دوري آمن
+  // ✅ تحديث دوري
   const updateMessages = async () => {
     if (!isMounted.current) return;
     const token = localStorage.getItem('token');
@@ -127,7 +111,7 @@ const AdvisorMessages = () => {
     }
   };
 
-  // ✅ useEffect الآمن للتحميل الأولي
+  // ✅ useEffect للتحميل الأولي
   useEffect(() => {
     isMounted.current = true;
     
@@ -144,7 +128,7 @@ const AdvisorMessages = () => {
     };
   }, []);
 
-  // ✅ إرسال رسالة
+  // ✅ إرسال رسالة (بدون AI)
   const sendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
 
@@ -167,25 +151,21 @@ const AdvisorMessages = () => {
     const token = localStorage.getItem('token');
     
     try {
-      // ✅ إرسال إلى نفس Conversation ID (37)
-      const response = await fetch('/api/Chat/send', {
+      // ✅ استخدام endpoint خاص بالطالب بدون AI
+      const response = await fetch('/api/Chat/send-to-advisor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          conversationId: ADVISOR_CONVERSATION_ID,
-          message: text,
-          type: 'text'
-        })
+        body: JSON.stringify({ message: text })
       });
       
       if (response.ok) {
         setMessages(prev => prev.map(m => 
           m.id === tempMsg.id ? { ...m, status: 'sent', temp: false } : m
         ));
-        toast.success('Message sent');
+        toast.success('Message sent to advisor');
         setTimeout(() => updateMessages(), 500);
       } else {
         throw new Error('Send failed');

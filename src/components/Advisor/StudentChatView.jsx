@@ -1,4 +1,7 @@
-// src/components/Advisor/StudentChatView.jsx
+// ============================================
+// 2. src/components/Advisor/StudentChatView.jsx (كامل)
+// ============================================
+
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner } from 'react-icons/fa';
@@ -32,30 +35,23 @@ const StudentChatView = () => {
     };
   }, []);
 
-  // ✅ استخدام ID ثابت للمحادثة (نفس ID اللي عند الطالب)
+  // ✅ استخدام نفس Conversation ID (37)
   const ADVISOR_CONVERSATION_ID = 37;
 
-  // ✅ دالة جلب البيانات الأولية
-  const fetchInitialData = async () => {
+  // ✅ جلب المحادثة
+  const fetchConversation = async () => {
     if (!studentId || !isMounted.current) return;
     
     try {
       const token = localStorage.getItem('token');
       
-      // جلب رسائل المحادثة
-      const msgRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
+      const response = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      if (msgRes.ok && isMounted.current) {
-        const convData = await msgRes.json();
+      if (response.ok && isMounted.current) {
+        const convData = await response.json();
         setMessages(convData.messages || []);
-      } else if (msgRes.status === 404 && isMounted.current) {
-        // إذا لم توجد المحادثة، ننشئ واحدة جديدة
-        await createNewConversation();
-        setMessages([]);
-      } else if (isMounted.current) {
-        setMessages([]);
       }
       
       // جلب معلومات الطالب
@@ -68,66 +64,44 @@ const StudentChatView = () => {
         if (foundStudent) setStudent(foundStudent);
       }
     } catch (err) {
-      console.error('Error loading data:', err);
-      if (isMounted.current) toast.error('Failed to load conversation');
+      console.error('Error loading conversation:', err);
     } finally {
       if (isMounted.current) setLoading(false);
     }
   };
 
-  // ✅ إنشاء محادثة جديدة
-  const createNewConversation = async () => {
-    const token = localStorage.getItem('token');
-    try {
-      await fetch('/api/Chat/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          conversationId: null,
-          message: "Starting conversation",
-          type: 'text'
-        })
-      });
-    } catch (err) {
-      console.error('Error creating conversation:', err);
-    }
-  };
-
-  // ✅ تحديث الرسائل بشكل دوري
-  const updateMessagesPeriodically = async () => {
+  // ✅ تحديث الرسائل دورياً
+  const updateMessages = async () => {
     if (!isMounted.current) return;
     const token = localStorage.getItem('token');
     
     try {
-      const msgRes = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
+      const response = await fetch(`/api/Chat/conversations/${ADVISOR_CONVERSATION_ID}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      if (msgRes.ok && isMounted.current) {
-        const convData = await msgRes.json();
+      if (response.ok && isMounted.current) {
+        const convData = await response.json();
         setMessages(convData.messages || []);
       }
     } catch (err) {
-      console.error("Periodic update error:", err);
+      console.error('Update error:', err);
     }
   };
 
-  // ✅ التعديل المهم هنا - استخدام async function داخل useEffect
+  // ✅ useEffect للتحميل الأولي
   useEffect(() => {
     let isActive = true;
     
     const initialize = async () => {
       if (!isActive) return;
-      await fetchInitialData();
+      await fetchConversation();
     };
     
     initialize();
     
     intervalRef.current = setInterval(() => {
       if (isActive) {
-        updateMessagesPeriodically();
+        updateMessages();
       }
     }, 5000);
     
@@ -137,7 +111,7 @@ const StudentChatView = () => {
     };
   }, [studentId]);
 
-  // ✅ إرسال رسالة
+  // ✅ إرسال رسالة (بدون AI)
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
     
@@ -158,22 +132,19 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const response = await fetch('/api/Chat/send', {
+      // ✅ استخدام endpoint خاص بالمشرف بدون AI
+      const response = await fetch(`/api/Advisor/students/${studentId}/send-message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          conversationId: ADVISOR_CONVERSATION_ID,
-          message: messageText,
-          type: 'text'
-        })
+        body: JSON.stringify(messageText)
       });
       
       if (response.ok) {
-        toast.success('Message sent');
-        await updateMessagesPeriodically();
+        toast.success('Message sent to student');
+        await updateMessages();
       } else {
         throw new Error('Send failed');
       }
