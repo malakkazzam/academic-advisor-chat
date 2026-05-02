@@ -12,7 +12,7 @@ const StudentChatView = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [inputMessage, setInputMessage] = useState('');
-  const [conversationId, setConversationId] = useState(null);
+  const [advisorConversationId, setAdvisorConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
 
@@ -31,31 +31,30 @@ const StudentChatView = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ جلب المحادثة الصحيحة بين المشرف وهذا الطالب
+  // ✅ جلب المحادثة الصحيحة (محادثة المشرف الأكاديمي)
   useEffect(() => {
-    const fetchConversation = async () => {
+    const fetchData = async () => {
       if (!studentId) return;
       
       try {
         const token = localStorage.getItem('token');
         
-        // 1. جيب كل المحادثات
+        // 1. جيب كل المحادثات عشان نلاقي محادثة المشرف
         const convRes = await fetch('/api/Chat/conversations', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const conversations = await convRes.json();
+        const allConversations = await convRes.json();
         
-        // 2. دور على المحادثة اللي فيها المشرف (Advisor Chat)
-        const advisorChat = conversations.find(c => 
-          c.title === 'محادثة مع المشرف الأكاديمي' ||
-          c.title?.toLowerCase().includes('advisor')
+        // 2. دور على المحادثة اللي عنوانها "محادثة مع المشرف الأكاديمي"
+        const advisorConversation = allConversations.find(c => 
+          c.title === 'محادثة مع المشرف الأكاديمي'
         );
         
-        if (advisorChat && advisorChat.id) {
-          setConversationId(advisorChat.id);
+        if (advisorConversation) {
+          setAdvisorConversationId(advisorConversation.id);
           
-          // 3. جيب رسايل المحادثة
-          const msgRes = await fetch(`/api/Chat/conversations/${advisorChat.id}`, {
+          // 3. جيب رسايل المحادثة دي
+          const msgRes = await fetch(`/api/Chat/conversations/${advisorConversation.id}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const convData = await msgRes.json();
@@ -83,10 +82,10 @@ const StudentChatView = () => {
       }
     };
 
-    fetchConversation();
+    fetchData();
   }, [studentId]);
 
-  // ✅ إرسال رسالة للمحادثة الصحيحة
+  // ✅ إرسال رسالة للمحادثة الصحيحة باستخدام sendMessage العادي
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
     
@@ -107,23 +106,27 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ إرسال إلى endpoint الطالب مع إضافة conversationId
-      const response = await fetch(`/api/Advisor/students/${studentId}/send-message`, {
+      // ✅ استخدم conversationId الصحيح (محادثة المشرف)
+      const response = await fetch('/api/Chat/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(messageText)
+        body: JSON.stringify({
+          conversationId: advisorConversationId,
+          message: messageText,
+          type: 'text'
+        })
       });
       
       if (response.ok) {
         toast.success('Message sent to student');
         
-        // ✅ تحديث المحادثة بعد الإرسال
+        // تحديث الرسائل
         setTimeout(async () => {
-          if (conversationId) {
-            const msgRes = await fetch(`/api/Chat/conversations/${conversationId}`, {
+          if (advisorConversationId) {
+            const msgRes = await fetch(`/api/Chat/conversations/${advisorConversationId}`, {
               headers: { 'Authorization': `Bearer ${token}` }
             });
             const convData = await msgRes.json();
@@ -165,7 +168,6 @@ const StudentChatView = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-100 to-gray-200">
-      {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-teal-600 px-4 py-3 flex items-center gap-3 shadow-md">
         <button
           onClick={() => navigate('/advisor')}
@@ -186,7 +188,6 @@ const StudentChatView = () => {
         </div>
       </div>
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2]">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
@@ -218,7 +219,6 @@ const StudentChatView = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="p-3 bg-white border-t">
         <div className="flex gap-2 items-end">
           <textarea
