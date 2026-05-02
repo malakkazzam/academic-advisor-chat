@@ -87,6 +87,8 @@ export const getAdvisorConversation = (conversationId) => api.get(`/Advisor/conv
 export const sendMessageToStudent = (studentId, message) => api.post(`/Advisor/students/${studentId}/send-message`, message);
 export const getAdvisorAnalytics = () => api.get('/Advisor/analytics');
 export const getAdvisorStats = () => api.get('/Advisor/stats');
+export const sendMessageToStudentByEmail = (studentEmail, message) => 
+  api.post(`/Advisor/students/email/${encodeURIComponent(studentEmail)}/send-message`, message);
 export const toggleStudentStatus = (studentId) => api.put(`/Advisor/students/${studentId}/toggle-status`);
 
 // ==================== SYSTEM ====================
