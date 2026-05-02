@@ -15,14 +15,15 @@ const StudentChatView = () => {
   const [searchEmail, setSearchEmail] = useState('');
   const [showEmailSearch, setShowEmailSearch] = useState(false);
   const [error, setError] = useState(null);
-  const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
+  const intervalRef = useRef(null);
 
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -36,7 +37,6 @@ const StudentChatView = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ جلب جميع الطلاب
   const fetchAllStudents = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -52,75 +52,7 @@ const StudentChatView = () => {
     return [];
   };
 
-  // ✅ إنشاء محادثة جديدة مع الطالب
-  const createConversation = async () => {
-    if (!student) return null;
-    
-    try {
-      const token = localStorage.getItem('token');
-      
-      // إرسال أول رسالة لإنشاء المحادثة
-      const response = await fetch('/api/Chat/send', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          conversationId: null,
-          message: `Hello ${student.fullName || student.name}, this is your academic advisor. How can I help you today?`,
-          type: 'text',
-          studentEmail: student.email  // ✅ إرسال إيميل الطالب مع الرسالة
-        })
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Conversation created:', data);
-        return data.conversationId || data.id;
-      }
-    } catch (err) {
-      console.error('Error creating conversation:', err);
-    }
-    return null;
-  };
-
-  // ✅ البحث عن المحادثة أو إنشاؤها
-  const findOrCreateConversation = async () => {
-    if (!student) return null;
-    
-    try {
-      const token = localStorage.getItem('token');
-      
-      // جلب كل المحادثات
-      const convRes = await fetch('/api/Chat/conversations', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const conversations = await convRes.json();
-      
-      // البحث عن محادثة مع هذا الطالب
-      let existingConv = conversations.find(c => 
-        c.title?.includes(student.email) ||
-        c.title?.includes(student.fullName) ||
-        c.title?.includes(`Student ${student.id}`)
-      );
-      
-      if (existingConv) {
-        return existingConv.id;
-      }
-      
-      // إذا لم توجد محادثة، ننشئ واحدة جديدة
-      console.log('No conversation found, creating new one...');
-      const newConvId = await createConversation();
-      return newConvId;
-      
-    } catch (err) {
-      console.error('Error finding/creating conversation:', err);
-      return null;
-    }
-  };
-
-  // ✅ تحميل المحادثة
+  // ✅ جلب المحادثة وجلب الرسائل
   const fetchConversation = async () => {
     if (!student || !isMounted.current) return;
     
@@ -130,20 +62,20 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // جلب أو إنشاء Conversation ID
-      const convId = await findOrCreateConversation();
+      // ✅ جلب المحادثة الخاصة بالطالب
+      const convRes = await fetch(`/api/Advisor/students/${student.id}/conversations`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       
-      if (convId) {
-        setConversationId(convId);
+      if (convRes.ok) {
+        const conversations = await convRes.json();
+        console.log('Student conversations:', conversations);
         
-        // جلب رسائل المحادثة
-        const msgRes = await fetch(`/api/Chat/conversations/${convId}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const convData = await msgRes.json();
-        
-        if (isMounted.current) {
-          setMessages(convData.messages || []);
+        // ✅ إذا كانت المحادثة موجودة
+        if (conversations && conversations.messages) {
+          setMessages(conversations.messages);
+        } else {
+          setMessages([]);
         }
       } else {
         setMessages([]);
@@ -158,34 +90,7 @@ const StudentChatView = () => {
     }
   };
 
-  // ✅ البحث عن الطالب بالإيميل
-  const handleSearchStudent = async () => {
-    if (!searchEmail.trim()) {
-      toast.error('Please enter an email');
-      return;
-    }
-    
-    setLoading(true);
-    setError(null);
-    
-    const allStudents = await fetchAllStudents();
-    const foundStudent = allStudents.find(s => 
-      s.email?.toLowerCase() === searchEmail.toLowerCase()
-    );
-    
-    if (foundStudent) {
-      setStudent(foundStudent);
-      setShowEmailSearch(false);
-      setSearchEmail('');
-      await fetchConversation();
-      toast.success(`Connected to ${foundStudent.fullName || foundStudent.name}`);
-    } else {
-      toast.error('No student found with this email');
-      setLoading(false);
-    }
-  };
-
-  // ✅ إرسال رسالة للطالب (تنشئ محادثة إذا لم توجد)
+  // ✅ إرسال رسالة جديدة (تنشئ محادثة تلقائياً)
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending || !student) return;
     
@@ -207,13 +112,6 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // إذا لم يكن هناك conversationId، نحاول إنشاء محادثة أولاً
-      let currentConvId = conversationId;
-      if (!currentConvId) {
-        currentConvId = await findOrCreateConversation();
-        if (currentConvId) setConversationId(currentConvId);
-      }
-      
       // ✅ إرسال الرسالة عبر endpoint المشرف
       const response = await fetch(`/api/Advisor/students/${student.id}/send-message`, {
         method: 'POST',
@@ -230,7 +128,7 @@ const StudentChatView = () => {
         ));
         toast.success('Message sent to student');
         
-        // تحديث المحادثة لجلب الرسائل المحدثة
+        // ✅ تحديث المحادثة بعد الإرسال
         setTimeout(() => {
           if (isMounted.current) {
             fetchConversation();
@@ -249,7 +147,31 @@ const StudentChatView = () => {
     }
   };
 
-  // ✅ تحميل الطالب من ID الرابط
+  const handleSearchStudent = async () => {
+    if (!searchEmail.trim()) {
+      toast.error('Please enter an email');
+      return;
+    }
+    
+    setLoading(true);
+    const allStudents = await fetchAllStudents();
+    const foundStudent = allStudents.find(s => 
+      s.email?.toLowerCase() === searchEmail.toLowerCase()
+    );
+    
+    if (foundStudent) {
+      setStudent(foundStudent);
+      setShowEmailSearch(false);
+      setSearchEmail('');
+      await fetchConversation();
+      toast.success(`Connected to ${foundStudent.fullName || foundStudent.name}`);
+    } else {
+      toast.error('No student found with this email');
+      setLoading(false);
+    }
+  };
+
+  // ✅ تحميل الطالب من الرابط
   useEffect(() => {
     if (studentId && !student) {
       const loadStudent = async () => {
@@ -267,6 +189,21 @@ const StudentChatView = () => {
       loadStudent();
     }
   }, [studentId]);
+
+  // ✅ تحديث تلقائي كل 5 ثواني (لجلب الرسائل الجديدة)
+  useEffect(() => {
+    if (student) {
+      intervalRef.current = setInterval(() => {
+        if (isMounted.current && !sending) {
+          fetchConversation();
+        }
+      }, 5000);
+      
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+    }
+  }, [student]);
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !showEmailSearch && !sending) {
@@ -324,12 +261,8 @@ const StudentChatView = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-100 to-gray-200">
-      {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-teal-600 px-4 py-3 flex items-center gap-3 shadow-md">
-        <button
-          onClick={() => navigate('/advisor')}
-          className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all"
-        >
+        <button onClick={() => navigate('/advisor')} className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all">
           <FaArrowLeft size={18} />
         </button>
         <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -346,16 +279,11 @@ const StudentChatView = () => {
             </p>
           )}
         </div>
-        <button
-          onClick={() => setShowEmailSearch(true)}
-          className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all"
-          title="Search by email"
-        >
+        <button onClick={() => setShowEmailSearch(true)} className="p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all">
           <FaSearch size={18} />
         </button>
       </div>
 
-      {/* Email Search Modal */}
       {showEmailSearch && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl w-full max-w-md p-6">
@@ -367,31 +295,16 @@ const StudentChatView = () => {
               placeholder="Enter student email..."
               className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 mb-4"
               autoFocus
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearchStudent();
-                }
-              }}
+              onKeyPress={(e) => { if (e.key === 'Enter') handleSearchStudent(); }}
             />
             <div className="flex gap-3">
-              <button
-                onClick={() => setShowEmailSearch(false)}
-                className="flex-1 px-4 py-2 text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSearchStudent}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700"
-              >
-                Search
-              </button>
+              <button onClick={() => setShowEmailSearch(false)} className="flex-1 px-4 py-2 text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50">Cancel</button>
+              <button onClick={handleSearchStudent} className="flex-1 px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700">Search</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Messages Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2]">
         {!student ? (
           <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
@@ -409,31 +322,19 @@ const StudentChatView = () => {
           Object.entries(messageGroups).map(([date, msgs]) => (
             <div key={date}>
               <div className="text-center my-4">
-                <span className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm">
-                  {date}
-                </span>
+                <span className="bg-gray-200 text-gray-600 text-xs px-3 py-1 rounded-full shadow-sm">{date}</span>
               </div>
               {msgs.map((msg, idx) => {
                 const isAdvisor = msg.senderId === 'advisor' || msg.sender === 'Advisor';
                 return (
                   <div key={msg.id || idx} className={`flex mb-3 ${isAdvisor ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[70%] ${isAdvisor ? 'mr-2' : 'ml-2'}`}>
-                      <div className={`rounded-2xl px-4 py-2 shadow-sm ${
-                        isAdvisor 
-                          ? 'bg-[#dcf8c5] text-gray-800 rounded-tr-none' 
-                          : 'bg-white text-gray-800 rounded-tl-none'
-                      }`}>
+                      <div className={`rounded-2xl px-4 py-2 shadow-sm ${isAdvisor ? 'bg-[#dcf8c5] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
                         <p className="text-sm break-words">{msg.content}</p>
-                        <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${
-                          isAdvisor ? 'text-gray-500' : 'text-gray-400'
-                        }`}>
+                        <div className={`text-[10px] mt-1 flex items-center gap-1 justify-end ${isAdvisor ? 'text-gray-500' : 'text-gray-400'}`}>
                           <span>{formatTime(msg.timestamp)}</span>
-                          {isAdvisor && msg.status === 'sending' && (
-                            <FaSpinner className="animate-spin" size={10} />
-                          )}
-                          {isAdvisor && msg.status === 'sent' && (
-                            <FaCheck className="text-gray-400" size={10} />
-                          )}
+                          {isAdvisor && msg.status === 'sending' && <FaSpinner className="animate-spin" size={10} />}
+                          {isAdvisor && msg.status === 'sent' && <FaCheck className="text-gray-400" size={10} />}
                         </div>
                       </div>
                     </div>
@@ -446,7 +347,6 @@ const StudentChatView = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area */}
       <div className="p-3 bg-white border-t">
         <div className="flex gap-2 items-end">
           <textarea
