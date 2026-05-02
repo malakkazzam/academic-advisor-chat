@@ -15,14 +15,9 @@ const StudentChatView = () => {
   const [advisorConversationId, setAdvisorConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
+  const intervalRef = useRef(null);
 
-  useEffect(() => {
-    isMounted.current = true;
-    return () => {
-      isMounted.current = false;
-    };
-  }, []);
-
+  // ✅ تعريف scrollToBottom
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -31,7 +26,54 @@ const StudentChatView = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ جلب المحادثة الصحيحة (محادثة المشرف الأكاديمي)
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  // ✅ جلب أو إنشاء محادثة المشرف
+  const getOrCreateAdvisorConversation = async () => {
+    const token = localStorage.getItem('token');
+    
+    try {
+      const convRes = await fetch('/api/Chat/conversations', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const conversations = await convRes.json();
+      
+      let advisorConv = conversations.find(c => 
+        c.title === 'Advisor Chat' || 
+        c.title === 'محادثة مع المشرف الأكاديمي'
+      );
+      
+      if (!advisorConv) {
+        const createRes = await fetch('/api/Chat/send', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            conversationId: null,
+            message: "Advisor conversation",
+            type: 'text'
+          })
+        });
+        const newConv = await createRes.json();
+        advisorConv = { id: newConv.conversationId || newConv.id };
+      }
+      
+      return advisorConv.id;
+    } catch (err) {
+      console.error('Error getting conversation:', err);
+      return null;
+    }
+  };
+
+  // ✅ تحميل البيانات
   useEffect(() => {
     const fetchData = async () => {
       if (!studentId) return;
@@ -39,31 +81,17 @@ const StudentChatView = () => {
       try {
         const token = localStorage.getItem('token');
         
-        // جيب كل المحادثات
-        const convRes = await fetch('/api/Chat/conversations', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const conversations = await convRes.json();
-        
-        // دور على المحادثة اللي عنوانها "محادثة المشرف الأكاديمي"
-        const advisorChat = conversations.find(c => 
-          c.title === 'محادثة المشرف الأكاديمي'
-        );
-        
-        if (advisorChat) {
-          setAdvisorConversationId(advisorChat.id);
+        const convId = await getOrCreateAdvisorConversation();
+        if (convId) {
+          setAdvisorConversationId(convId);
           
-          // جيب رسايل المحادثة
-          const msgRes = await fetch(`/api/Chat/conversations/${advisorChat.id}`, {
+          const msgRes = await fetch(`/api/Chat/conversations/${convId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
           const convData = await msgRes.json();
           setMessages(convData.messages || []);
-        } else {
-          setMessages([]);
         }
         
-        // جيب معلومات الطالب
         const studentsRes = await fetch('/api/Advisor/students', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -76,16 +104,32 @@ const StudentChatView = () => {
       } catch (err) {
         console.error('Error:', err);
       } finally {
-        if (isMounted.current) {
-          setLoading(false);
-        }
+        if (isMounted.current) setLoading(false);
       }
     };
 
     fetchData();
+    
+    intervalRef.current = setInterval(() => {
+      if (isMounted.current && advisorConversationId) {
+        const updateMessages = async () => {
+          const token = localStorage.getItem('token');
+          const msgRes = await fetch(`/api/Chat/conversations/${advisorConversationId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const convData = await msgRes.json();
+          if (isMounted.current) setMessages(convData.messages || []);
+        };
+        updateMessages();
+      }
+    }, 5000);
+    
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [studentId]);
 
-  // ✅ إرسال رسالة للمحادثة الصحيحة
+  // ✅ إرسال رسالة
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending) return;
     
@@ -106,7 +150,6 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
-      // ✅ استخدم المحادثة الصحيحة (ID 37)
       const response = await fetch('/api/Chat/send', {
         method: 'POST',
         headers: {
@@ -114,24 +157,20 @@ const StudentChatView = () => {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          conversationId: advisorConversationId,  // ID المحادثة الصحيح
+          conversationId: advisorConversationId,
           message: messageText,
           type: 'text'
         })
       });
       
       if (response.ok) {
-        toast.success('Message sent to student');
-        
-        // تحديث الرسائل
+        toast.success('Message sent');
         setTimeout(async () => {
-          if (advisorConversationId) {
-            const msgRes = await fetch(`/api/Chat/conversations/${advisorConversationId}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-            });
-            const convData = await msgRes.json();
-            setMessages(convData.messages || []);
-          }
+          const msgRes = await fetch(`/api/Chat/conversations/${advisorConversationId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const convData = await msgRes.json();
+          setMessages(convData.messages || []);
         }, 500);
       } else {
         throw new Error('Send failed');
