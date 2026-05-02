@@ -1,7 +1,7 @@
 // src/components/Advisor/StudentChatView.jsx
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner, FaCheck, FaSearch } from 'react-icons/fa';
+import { FaArrowLeft, FaUserGraduate, FaPaperPlane, FaSpinner, FaCheck, FaSearch, FaExclamationTriangle } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 
 const StudentChatView = () => {
@@ -14,18 +14,15 @@ const StudentChatView = () => {
   const [inputMessage, setInputMessage] = useState('');
   const [searchEmail, setSearchEmail] = useState('');
   const [showEmailSearch, setShowEmailSearch] = useState(false);
-  const [isConnected, setIsConnected] = useState(true);
+  const [error, setError] = useState(null);
+  const [conversationId, setConversationId] = useState(null);
   const messagesEndRef = useRef(null);
   const isMounted = useRef(true);
-  const intervalRef = useRef(null);
-  const isFetching = useRef(false);
-  const initialLoadDone = useRef(false);
 
   useEffect(() => {
     isMounted.current = true;
     return () => {
       isMounted.current = false;
-      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, []);
 
@@ -39,7 +36,7 @@ const StudentChatView = () => {
     scrollToBottom();
   }, [messages]);
 
-  // ✅ جلب جميع الطلاب (مرة واحدة فقط)
+  // ✅ جلب جميع الطلاب
   const fetchAllStudents = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -47,8 +44,7 @@ const StudentChatView = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (response.ok) {
-        const data = await response.json();
-        return data;
+        return await response.json();
       }
     } catch (err) {
       console.error('Error fetching students:', err);
@@ -56,65 +52,113 @@ const StudentChatView = () => {
     return [];
   };
 
-  // ✅ البحث عن الطالب بالإيميل
-  const findStudentByEmail = async (email) => {
-    const allStudents = await fetchAllStudents();
-    const foundStudent = allStudents.find(s => 
-      s.email?.toLowerCase() === email.toLowerCase() ||
-      s.email?.includes(email.toLowerCase())
-    );
-    return foundStudent;
-  };
-
-  // ✅ تحميل المحادثة محسّن
-  const fetchConversation = async (showLoading = false) => {
-    if (!student || !isMounted.current || isFetching.current) return;
-    
-    if (showLoading) {
-      setLoading(true);
-    }
-    
-    isFetching.current = true;
+  // ✅ إنشاء محادثة جديدة مع الطالب
+  const createConversation = async () => {
+    if (!student) return null;
     
     try {
       const token = localStorage.getItem('token');
       
+      // إرسال أول رسالة لإنشاء المحادثة
+      const response = await fetch('/api/Chat/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          conversationId: null,
+          message: `Hello ${student.fullName || student.name}, this is your academic advisor. How can I help you today?`,
+          type: 'text',
+          studentEmail: student.email  // ✅ إرسال إيميل الطالب مع الرسالة
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Conversation created:', data);
+        return data.conversationId || data.id;
+      }
+    } catch (err) {
+      console.error('Error creating conversation:', err);
+    }
+    return null;
+  };
+
+  // ✅ البحث عن المحادثة أو إنشاؤها
+  const findOrCreateConversation = async () => {
+    if (!student) return null;
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      // جلب كل المحادثات
       const convRes = await fetch('/api/Chat/conversations', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const conversations = await convRes.json();
       
-      const studentConv = conversations.find(c => 
-        c.title?.includes(student.fullName) ||
+      // البحث عن محادثة مع هذا الطالب
+      let existingConv = conversations.find(c => 
         c.title?.includes(student.email) ||
+        c.title?.includes(student.fullName) ||
         c.title?.includes(`Student ${student.id}`)
       );
       
-      if (studentConv?.id) {
-        const msgRes = await fetch(`/api/Chat/conversations/${studentConv.id}`, {
+      if (existingConv) {
+        return existingConv.id;
+      }
+      
+      // إذا لم توجد محادثة، ننشئ واحدة جديدة
+      console.log('No conversation found, creating new one...');
+      const newConvId = await createConversation();
+      return newConvId;
+      
+    } catch (err) {
+      console.error('Error finding/creating conversation:', err);
+      return null;
+    }
+  };
+
+  // ✅ تحميل المحادثة
+  const fetchConversation = async () => {
+    if (!student || !isMounted.current) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const token = localStorage.getItem('token');
+      
+      // جلب أو إنشاء Conversation ID
+      const convId = await findOrCreateConversation();
+      
+      if (convId) {
+        setConversationId(convId);
+        
+        // جلب رسائل المحادثة
+        const msgRes = await fetch(`/api/Chat/conversations/${convId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const convData = await msgRes.json();
         
         if (isMounted.current) {
           setMessages(convData.messages || []);
-          setIsConnected(true);
         }
-      } else if (isMounted.current) {
+      } else {
         setMessages([]);
       }
     } catch (err) {
       console.error('Error loading conversation:', err);
-      setIsConnected(false);
+      setError('Failed to load conversation');
     } finally {
       if (isMounted.current) {
         setLoading(false);
-        isFetching.current = false;
       }
     }
   };
 
-  // ✅ البحث عن الطالب بالإيميل والعرض
+  // ✅ البحث عن الطالب بالإيميل
   const handleSearchStudent = async () => {
     if (!searchEmail.trim()) {
       toast.error('Please enter an email');
@@ -122,21 +166,26 @@ const StudentChatView = () => {
     }
     
     setLoading(true);
-    const foundStudent = await findStudentByEmail(searchEmail);
+    setError(null);
+    
+    const allStudents = await fetchAllStudents();
+    const foundStudent = allStudents.find(s => 
+      s.email?.toLowerCase() === searchEmail.toLowerCase()
+    );
     
     if (foundStudent) {
       setStudent(foundStudent);
       setShowEmailSearch(false);
       setSearchEmail('');
-      await fetchConversation(true);
-      toast.success(`Connected to ${foundStudent.fullName || foundStudent.name || foundStudent.email}`);
+      await fetchConversation();
+      toast.success(`Connected to ${foundStudent.fullName || foundStudent.name}`);
     } else {
       toast.error('No student found with this email');
       setLoading(false);
     }
   };
 
-  // ✅ إرسال رسالة محسّن
+  // ✅ إرسال رسالة للطالب (تنشئ محادثة إذا لم توجد)
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || sending || !student) return;
     
@@ -158,6 +207,14 @@ const StudentChatView = () => {
     try {
       const token = localStorage.getItem('token');
       
+      // إذا لم يكن هناك conversationId، نحاول إنشاء محادثة أولاً
+      let currentConvId = conversationId;
+      if (!currentConvId) {
+        currentConvId = await findOrCreateConversation();
+        if (currentConvId) setConversationId(currentConvId);
+      }
+      
+      // ✅ إرسال الرسالة عبر endpoint المشرف
       const response = await fetch(`/api/Advisor/students/${student.id}/send-message`, {
         method: 'POST',
         headers: {
@@ -171,9 +228,9 @@ const StudentChatView = () => {
         setMessages(prev => prev.map(msg => 
           msg.id === tempMsg.id ? { ...msg, status: 'sent' } : msg
         ));
-        toast.success('Message sent');
+        toast.success('Message sent to student');
         
-        // تحديث المحادثة بعد الإرسال
+        // تحديث المحادثة لجلب الرسائل المحدثة
         setTimeout(() => {
           if (isMounted.current) {
             fetchConversation();
@@ -192,30 +249,24 @@ const StudentChatView = () => {
     }
   };
 
-  // ✅ تحميل أولي باستخدام studentId من الرابط
+  // ✅ تحميل الطالب من ID الرابط
   useEffect(() => {
-    if (studentId && !student && !initialLoadDone.current) {
-      initialLoadDone.current = true;
+    if (studentId && !student) {
       const loadStudent = async () => {
         setLoading(true);
         const allStudents = await fetchAllStudents();
         const found = allStudents.find(s => s.id === parseInt(studentId));
-        if (found) {
+        if (found && isMounted.current) {
           setStudent(found);
-          await fetchConversation(true);
-        } else {
+          await fetchConversation();
+        } else if (isMounted.current) {
           setLoading(false);
+          setError('Student not found');
         }
       };
       loadStudent();
     }
   }, [studentId]);
-
-  // ✅ إزالة الـ interval وجلب البيانات فقط عند الحاجة
-  // بدلاً من الـ interval، بنعتمد على جلب البيانات عند:
-  // 1. التحميل الأولي
-  // 2. بعد إرسال رسالة
-  // 3. المستخدم يعمل refresh يدوي
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !showEmailSearch && !sending) {
@@ -262,6 +313,15 @@ const StudentChatView = () => {
     );
   }
 
+  if (error && !student) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[calc(100vh-120px)] text-center">
+        <FaExclamationTriangle className="text-yellow-500 text-5xl mb-4" />
+        <p className="text-gray-600 mb-2">{error}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-120px)] bg-gradient-to-br from-gray-100 to-gray-200">
       {/* Header */}
@@ -281,8 +341,8 @@ const StudentChatView = () => {
           </h2>
           {student && (
             <p className="text-white/70 text-xs flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></span>
-              {isConnected ? 'Online' : 'Offline'} • {student.email}
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+              {student.email}
             </p>
           )}
         </div>
@@ -407,11 +467,6 @@ const StudentChatView = () => {
             {sending ? <FaSpinner className="animate-spin" size={18} /> : <FaPaperPlane size={18} />}
           </button>
         </div>
-        {!student && (
-          <p className="text-xs text-gray-400 text-center mt-2">
-            Click the search icon <FaSearch className="inline" /> to find a student by email
-          </p>
-        )}
       </div>
     </div>
   );
