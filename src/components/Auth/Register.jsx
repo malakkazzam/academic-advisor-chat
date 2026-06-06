@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { GraduationCap, Eye, EyeOff, Loader2, Mail, Phone, User, BookOpen, Award, Hash, Send, Sparkles, ArrowRight, CheckCircle } from 'lucide-react'
+import { Bot, Eye, EyeOff, Loader2, Mail, Phone, User, BookOpen, Award, Hash, Send, Sparkles, ArrowRight, CheckCircle } from 'lucide-react'
 import { authApi } from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -111,16 +111,16 @@ const Register = () => {
             </div>
             <div className="inline-flex p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-2xl mb-4 shadow-inner">
               <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform hover:scale-110 duration-300">
-                <GraduationCap className="h-8 w-8 text-white" />
+                <Bot className="h-8 w-8 text-white" />
               </div>
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-700 to-indigo-600 bg-clip-text text-transparent">
               Create Account
             </h1>
-            <p className="text-gray-500 mt-2 text-sm">Join UniGuide as a student</p>
+            <p className="text-gray-500 mt-2 text-sm">Join UniGuide AI as a student</p>
           </div>
 
-          {/* Form */}
+          {/* Form - باقي الكود زي ما هو */}
           <form onSubmit={handleSubmit(onSubmit)} className="px-8 pb-8 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Full Name */}
@@ -145,6 +145,7 @@ const Register = () => {
                 {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
               </div>
 
+              {/* باقي الحقول كما هي بدون تغيير */}
               {/* Personal Email */}
               <div className="group">
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -384,7 +385,7 @@ const Register = () => {
         {/* Decorative text */}
         <p className="text-center text-xs text-purple-300 mt-4 flex items-center justify-center gap-2">
           <span className="inline-block w-1 h-1 bg-purple-400 rounded-full"></span>
-          Powered by UniGuide Academic Platform
+          Powered by UniGuide AI Platform
           <span className="inline-block w-1 h-1 bg-purple-400 rounded-full"></span>
         </p>
       </div>

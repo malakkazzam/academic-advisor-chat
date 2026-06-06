@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { GraduationCap, Eye, EyeOff, Loader2, Mail, Lock, LogIn, Sparkles, ArrowRight, CheckCircle } from 'lucide-react'
+import { Bot, Eye, EyeOff, Loader2, Mail, Lock, LogIn, Sparkles, ArrowRight, CheckCircle } from 'lucide-react'
 import { authApi } from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -72,7 +72,7 @@ const Login = () => {
             </div>
             <div className="inline-flex p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-2xl mb-4 shadow-inner">
               <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform hover:scale-110 duration-300">
-                <GraduationCap className="h-8 w-8 text-white" />
+                <Bot className="h-8 w-8 text-white" />
               </div>
             </div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-700 to-indigo-600 bg-clip-text text-transparent">
@@ -162,11 +162,6 @@ const Login = () => {
                 </>
               )}
             </button>
-
-            {/* Login hint
-            <div className="text-center text-xs text-gray-400 pt-2">
-              <p>Demo: student@university.edu / any password</p>
-            </div> */}
           </form>
 
           {/* Footer */}
@@ -200,7 +195,7 @@ const Login = () => {
         {/* Decorative text */}
         <p className="text-center text-xs text-purple-300 mt-4 flex items-center justify-center gap-2">
           <span className="inline-block w-1 h-1 bg-purple-400 rounded-full"></span>
-          Powered by UniGuide Academic Platform
+          Powered by UniGuide AI Platform
           <span className="inline-block w-1 h-1 bg-purple-400 rounded-full"></span>
         </p>
       </div>
