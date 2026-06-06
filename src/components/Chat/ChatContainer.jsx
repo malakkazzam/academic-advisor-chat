@@ -438,7 +438,7 @@ const ChatContainer = () => {
                   <span className="hidden sm:inline">New</span>
                 </button>
               )}
-              {!isReadOnlyMode && selectedConversation && messages.length > 0 && chatType === 'ai' && (
+              {!isReadOnlyMode && messages.length > 0 && chatType === 'ai' && (
                 <button onClick={handleClearChat} className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-amber-500/80 hover:bg-amber-600 text-white rounded-lg transition text-xs md:text-sm">
                   <Eraser size={14} className="md:h-4 md:w-4" />
                   <span className="hidden sm:inline">Clear</span>
