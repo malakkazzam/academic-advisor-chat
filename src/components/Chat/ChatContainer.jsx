@@ -217,7 +217,7 @@ const ChatContainer = () => {
   const toggleSidebar = () => setSidebarOpen(!sidebarOpen)
 
   return (
-    <div className="flex h-[calc(100vh-120px)] gap-3 md:gap-4 relative">
+    <div className="flex h-[calc(100vh-73px)] gap-3 md:gap-4 relative bg-gradient-to-br from-purple-100 via-purple-50 to-indigo-100">
       {/* ✅ الشريط الجانبي */}
       <div className={`
         fixed md:relative top-0 left-0 z-40 h-full bg-white rounded-r-xl shadow-xl border-r border-gray-200 flex flex-col transition-all duration-300 ease-in-out
@@ -245,7 +245,7 @@ const ChatContainer = () => {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-2 space-y-3">
+           <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 space-y-3 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
               {/* Advisor Section */}
               <div className="space-y-1">
                 <div className="px-2 pt-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
@@ -394,36 +394,35 @@ const ChatContainer = () => {
       )}
 
       {/* منطقة الدردشة الرئيسية */}
-      <div className="flex-1 bg-white rounded-xl shadow-md border flex flex-col min-w-0">
+      <div className="flex-1 bg-gradient-to-br from-purple-100 via-purple-50 to-indigo-100 rounded-xl shadow-md border flex flex-col min-w-0">
         {/* ✅ رأس الشات مع زر القائمة في مكانه الصحيح */}
-        <div className="p-3 md:p-4 border-b bg-white rounded-t-xl">
+        <div className="p-3 md:p-4 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-t-xl">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 md:gap-3">
-              {/* ✅ زر فتح القائمة على الموبايل - بجانب الأيقونة */}
               {isMobile && !sidebarOpen && (
                 <button
                   onClick={toggleSidebar}
-                  className="p-2 rounded-lg hover:bg-gray-100 text-purple-600 transition"
+                  className="p-2 rounded-lg hover:bg-white/20 text-white transition"
                 >
                   <Menu size={20} />
                 </button>
               )}
               {isReadOnlyMode ? (
-                <Lock className="h-5 w-5 md:h-6 md:w-6 text-gray-500" />
+                <Lock className="h-5 w-5 md:h-6 md:w-6 text-white" />
               ) : chatType === 'ai' ? (
-                <Bot className="h-5 w-5 md:h-6 md:w-6 text-purple-600" />
+                <Bot className="h-5 w-5 md:h-6 md:w-6 text-white" />
               ) : (
-                <UserCog className="h-5 w-5 md:h-6 md:w-6 text-purple-600" />
+                <UserCog className="h-5 w-5 md:h-6 md:w-6 text-white" />
               )}
               <div className="min-w-0">
-                <h3 className="font-semibold text-gray-800 text-sm md:text-base truncate">
+                <h3 className="font-semibold text-white text-sm md:text-base truncate">
                   {isReadOnlyMode 
                     ? `🔒 ${readOnlyChat?.title || 'Conversation'} (Read Only)`
                     : chatType === 'ai' 
                       ? 'UniGuide AI Assistant' 
                       : 'Academic Advisor'}
                 </h3>
-                <p className="text-xs text-gray-400 truncate hidden sm:block">
+                <p className="text-xs text-purple-200 truncate hidden sm:block">
                   {isReadOnlyMode 
                     ? 'You can only view this conversation'
                     : chatType === 'ai' 
@@ -434,13 +433,13 @@ const ChatContainer = () => {
             </div>
             <div className="flex items-center gap-1 md:gap-2">
               {!isReadOnlyMode && (
-                <button onClick={handleNewChat} className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition text-xs md:text-sm">
+                <button onClick={handleNewChat} className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg transition text-xs md:text-sm">
                   <PlusCircle size={14} className="md:h-4 md:w-4" />
                   <span className="hidden sm:inline">New</span>
                 </button>
               )}
               {!isReadOnlyMode && selectedConversation && messages.length > 0 && chatType === 'ai' && (
-                <button onClick={handleClearChat} className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-amber-50 text-amber-700 rounded-lg hover:bg-amber-100 transition text-xs md:text-sm">
+                <button onClick={handleClearChat} className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1.5 bg-amber-500/80 hover:bg-amber-600 text-white rounded-lg transition text-xs md:text-sm">
                   <Eraser size={14} className="md:h-4 md:w-4" />
                   <span className="hidden sm:inline">Clear</span>
                 </button>
@@ -458,7 +457,7 @@ const ChatContainer = () => {
             placeholder={chatType === 'ai' ? 'Ask UniGuide AI...' : 'Message your academic advisor...'} 
           />
         ) : (
-          <div className="p-3 text-center text-gray-400 text-sm border-t bg-gray-50">
+          <div className="p-3 text-center text-gray-500 text-sm border-t border-gray-200 bg-white/50">
             <Lock size={14} className="inline mr-1" /> This conversation is read-only. You cannot send messages here.
           </div>
         )}

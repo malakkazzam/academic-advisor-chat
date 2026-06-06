@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { GraduationCap, Eye, EyeOff, Loader2, Mail, Phone, User, BookOpen, Award, Hash, Send } from 'lucide-react'
+import { GraduationCap, Eye, EyeOff, Loader2, Mail, Phone, User, BookOpen, Award, Hash, Send, Sparkles, ArrowRight, CheckCircle } from 'lucide-react'
 import { authApi } from '../../lib/api'
 import { useAuthStore } from '../../stores/authStore'
 
@@ -26,6 +26,7 @@ const registerSchema = z.object({
 
 const Register = () => {
   const [showPassword, setShowPassword] = useState(false)
+  const [focusedField, setFocusedField] = useState(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
   const { setAuth } = useAuthStore()
@@ -46,9 +47,8 @@ const Register = () => {
   const onSubmit = async (data) => {
     setLoading(true)
     try {
-      // ✅ إنشاء نسخة من البيانات بدون confirmPassword (لا نستخدم تدمير يسبب تحذيراً)
       const payload = { ...data }
-      delete payload.confirmPassword   // حذف الحقل مباشرة – لا يحذر لأننا نستخدمه
+      delete payload.confirmPassword
       payload.role = 'Student'
       payload.academicLevel = parseInt(payload.academicLevel)
       payload.gpa = payload.gpa ? parseFloat(payload.gpa) : null
@@ -92,189 +92,315 @@ const Register = () => {
   ]
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 via-white to-purple-50 p-4">
-      <div className="w-full max-w-xl bg-white rounded-2xl shadow-xl overflow-hidden">
-        {/* رأس البطاقة */}
-        <div className="px-6 pt-8 pb-4 text-center">
-          <div className="flex justify-center mb-3">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center shadow-md">
-              <GraduationCap className="h-8 w-8 text-white" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-100 via-purple-50 to-indigo-100 p-4 relative overflow-hidden">
+      {/* Decorative circles */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-indigo-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse animation-delay-2000"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20"></div>
+      
+      <div className="w-full max-w-xl relative z-10">
+        {/* Card */}
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 hover:shadow-purple-200/50 hover:scale-[1.01]">
+          {/* Gradient top bar */}
+          <div className="h-2 bg-gradient-to-r from-purple-400 via-purple-600 to-indigo-500"></div>
+          
+          {/* Header */}
+          <div className="px-8 pt-8 pb-6 text-center relative">
+            <div className="absolute top-4 right-4">
+              <Sparkles className="h-5 w-5 text-purple-400 animate-pulse" />
             </div>
+            <div className="inline-flex p-3 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-2xl mb-4 shadow-inner">
+              <div className="w-16 h-16 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg transform transition-transform hover:scale-110 duration-300">
+                <GraduationCap className="h-8 w-8 text-white" />
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-700 to-indigo-600 bg-clip-text text-transparent">
+              Create Account
+            </h1>
+            <p className="text-gray-500 mt-2 text-sm">Join UniGuide as a student</p>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Create Account</h1>
-          <p className="text-gray-500 text-sm mt-1">Join UniGuide as a student</p>
-        </div>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="px-6 pb-8 space-y-5">
-          <div className="space-y-5">
-            {/* Full Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  {...register('fullName')}
-                  type="text"
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="Ahmed Ali"
-                />
+          {/* Form */}
+          <form onSubmit={handleSubmit(onSubmit)} className="px-8 pb-8 space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Full Name */}
+              <div className="group md:col-span-2">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Full Name *
+                </label>
+                <div className="relative">
+                  <User className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors duration-300 ${focusedField === 'fullName' ? 'text-purple-500' : 'text-gray-400'}`} />
+                  <input
+                    {...register('fullName')}
+                    onFocus={() => setFocusedField('fullName')}
+                    onBlur={() => setFocusedField(null)}
+                    type="text"
+                    className="w-full pl-10 pr-3 py-3 bg-purple-50/30 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    style={{
+                      borderColor: errors.fullName ? '#ef4444' : focusedField === 'fullName' ? '#8b5cf6' : '#e9d5ff'
+                    }}
+                    placeholder="Ahmed Ali"
+                  />
+                </div>
+                {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
               </div>
-              {errors.fullName && <p className="text-red-500 text-xs mt-1">{errors.fullName.message}</p>}
-            </div>
 
-            {/* Personal Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Personal Email *</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  {...register('email')}
-                  type="email"
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="you@gmail.com"
-                />
+              {/* Personal Email */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Personal Email *
+                </label>
+                <div className="relative">
+                  <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors duration-300 ${focusedField === 'email' ? 'text-purple-500' : 'text-gray-400'}`} />
+                  <input
+                    {...register('email')}
+                    onFocus={() => setFocusedField('email')}
+                    onBlur={() => setFocusedField(null)}
+                    type="email"
+                    className="w-full pl-10 pr-3 py-3 bg-purple-50/30 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    style={{
+                      borderColor: errors.email ? '#ef4444' : focusedField === 'email' ? '#8b5cf6' : '#e9d5ff'
+                    }}
+                    placeholder="you@gmail.com"
+                  />
+                </div>
+                {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
               </div>
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-            </div>
 
-            {/* University Email */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">University Email *</label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  {...register('universityEmail')}
-                  type="email"
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="student@university.edu"
-                />
+              {/* University Email */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  University Email *
+                </label>
+                <div className="relative">
+                  <Mail className={`absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 transition-colors duration-300 ${focusedField === 'universityEmail' ? 'text-purple-500' : 'text-gray-400'}`} />
+                  <input
+                    {...register('universityEmail')}
+                    onFocus={() => setFocusedField('universityEmail')}
+                    onBlur={() => setFocusedField(null)}
+                    type="email"
+                    className="w-full pl-10 pr-3 py-3 bg-purple-50/30 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    style={{
+                      borderColor: errors.universityEmail ? '#ef4444' : focusedField === 'universityEmail' ? '#8b5cf6' : '#e9d5ff'
+                    }}
+                    placeholder="student@university.edu"
+                  />
+                </div>
+                <p className="text-xs text-gray-400 mt-1">Must be a valid university email</p>
+                {errors.universityEmail && <p className="text-red-500 text-xs mt-1">{errors.universityEmail.message}</p>}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Must be a valid university email approved by the system</p>
-              {errors.universityEmail && <p className="text-red-500 text-xs mt-1">{errors.universityEmail.message}</p>}
-            </div>
 
-            {/* Department */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Department *</label>
-              <div className="relative">
-                <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              {/* Department */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Department *
+                </label>
+                <div className="relative">
+                  <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <select
+                    {...register('department')}
+                    className="w-full pl-10 pr-3 py-3 bg-purple-50/30 border-2 border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white appearance-none"
+                    style={{
+                      borderColor: errors.department ? '#ef4444' : '#e9d5ff'
+                    }}
+                  >
+                    <option value="">Select Department</option>
+                    {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                  </select>
+                </div>
+                {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department.message}</p>}
+              </div>
+
+              {/* Academic Level */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Academic Level *
+                </label>
                 <select
-                  {...register('department')}
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white transition"
+                  {...register('academicLevel')}
+                  className="w-full px-4 py-3 bg-purple-50/30 border-2 border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                  style={{
+                    borderColor: errors.academicLevel ? '#ef4444' : '#e9d5ff'
+                  }}
                 >
-                  <option value="">Select Department</option>
-                  {departments.map(dept => <option key={dept} value={dept}>{dept}</option>)}
+                  {levels.map(level => <option key={level.value} value={level.value}>{level.label}</option>)}
                 </select>
+                {errors.academicLevel && <p className="text-red-500 text-xs mt-1">{errors.academicLevel.message}</p>}
               </div>
-              {errors.department && <p className="text-red-500 text-xs mt-1">{errors.department.message}</p>}
-            </div>
 
-            {/* Academic Level */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Academic Level *</label>
-              <select
-                {...register('academicLevel')}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white transition"
-              >
-                {levels.map(level => <option key={level.value} value={level.value}>{level.label}</option>)}
-              </select>
-              {errors.academicLevel && <p className="text-red-500 text-xs mt-1">{errors.academicLevel.message}</p>}
-            </div>
+              {/* GPA */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  GPA (0.0 - 4.0)
+                </label>
+                <div className="relative">
+                  <Award className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    {...register('gpa')}
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="4"
+                    className="w-full pl-10 pr-3 py-3 bg-purple-50/30 border-2 border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    placeholder="0.0"
+                  />
+                </div>
+              </div>
 
-            {/* GPA */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">GPA (0.0 - 4.0)</label>
-              <div className="relative">
-                <Award className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  {...register('gpa')}
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="4"
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="0.0"
-                />
+              {/* Phone Number */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Phone Number (WhatsApp)
+                </label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    {...register('phoneNumber')}
+                    type="tel"
+                    className="w-full pl-10 pr-3 py-3 bg-purple-50/30 border-2 border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    placeholder="+20123456789"
+                  />
+                </div>
+              </div>
+
+              {/* Telegram Username */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Telegram Username
+                </label>
+                <div className="relative">
+                  <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <input
+                    {...register('telegramUsername')}
+                    type="text"
+                    className="w-full pl-10 pr-3 py-3 bg-purple-50/30 border-2 border-purple-100 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    placeholder="@username"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Password *
+                </label>
+                <div className="relative">
+                  <input
+                    {...register('password')}
+                    onFocus={() => setFocusedField('password')}
+                    onBlur={() => setFocusedField(null)}
+                    type={showPassword ? 'text' : 'password'}
+                    className="w-full px-4 pr-12 py-3 bg-purple-50/30 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    style={{
+                      borderColor: errors.password ? '#ef4444' : focusedField === 'password' ? '#8b5cf6' : '#e9d5ff'
+                    }}
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-purple-600 transition-colors duration-300"
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
+              </div>
+
+              {/* Confirm Password */}
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Confirm Password *
+                </label>
+                <div className="relative">
+                  <input
+                    {...register('confirmPassword')}
+                    type={showPassword ? 'text' : 'password'}
+                    className="w-full px-4 py-3 bg-purple-50/30 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 hover:bg-white"
+                    style={{
+                      borderColor: errors.confirmPassword ? '#ef4444' : '#e9d5ff'
+                    }}
+                    placeholder="••••••••"
+                  />
+                </div>
+                {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
               </div>
             </div>
 
-            {/* Phone Number */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number (WhatsApp)</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  {...register('phoneNumber')}
-                  type="tel"
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="+20123456789"
-                />
-              </div>
-            </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-gradient-to-r from-purple-600 via-purple-500 to-indigo-600 hover:from-purple-700 hover:via-purple-600 hover:to-indigo-700 text-white font-bold py-3 rounded-xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 active:translate-y-0 mt-4"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Creating account...
+                </>
+              ) : (
+                <>
+                  <Send className="h-5 w-5" />
+                  Sign Up
+                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                </>
+              )}
+            </button>
 
-            {/* Telegram Username */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telegram Username</label>
-              <div className="relative">
-                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <input
-                  {...register('telegramUsername')}
-                  type="text"
-                  className="w-full pl-9 pr-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="@username"
-                />
-              </div>
+            {/* Demo hint */}
+            <div className="text-center text-xs text-gray-400 pt-2">
+              <p>Fill all required fields (*) to create your account</p>
             </div>
+          </form>
 
-            {/* Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-              <div className="relative">
-                <input
-                  {...register('password')}
-                  type={showPassword ? 'text' : 'password'}
-                  className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </button>
-              </div>
-              {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password.message}</p>}
-            </div>
-
-            {/* Confirm Password */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password *</label>
-              <input
-                {...register('confirmPassword')}
-                type={showPassword ? 'text' : 'password'}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition"
-                placeholder="••••••••"
-              />
-              {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword.message}</p>}
-            </div>
+          {/* Footer */}
+          <div className="px-8 py-5 text-center border-t border-purple-50 bg-gradient-to-r from-purple-50/30 to-indigo-50/30">
+            <span className="text-gray-600 text-sm">Already have an account?</span>{' '}
+            <Link to="/login" className="text-purple-600 font-bold hover:text-purple-700 inline-flex items-center gap-1 group transition">
+              Sign in
+              <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
           </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-xl transition flex items-center justify-center gap-2 disabled:opacity-50 mt-4"
-          >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
-            {loading ? 'Creating account...' : 'Sign Up →'}
-          </button>
-        </form>
-
-        <div className="bg-gray-50 px-6 py-4 text-center text-sm text-gray-500 border-t">
-          Already have an account?{' '}
-          <Link to="/login" className="text-purple-600 font-semibold hover:underline">Login</Link>
         </div>
+
+        {/* Trust indicators */}
+        <div className="mt-6 flex justify-center items-center gap-4">
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <CheckCircle className="h-3 w-3 text-purple-400" />
+            <span>Secure Registration</span>
+          </div>
+          <div className="w-1 h-1 bg-purple-300 rounded-full"></div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <CheckCircle className="h-3 w-3 text-purple-400" />
+            <span>Data Encrypted</span>
+          </div>
+          <div className="w-1 h-1 bg-purple-300 rounded-full"></div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-400">
+            <CheckCircle className="h-3 w-3 text-purple-400" />
+            <span>Student Verification</span>
+          </div>
+        </div>
+
+        {/* Decorative text */}
+        <p className="text-center text-xs text-purple-300 mt-4 flex items-center justify-center gap-2">
+          <span className="inline-block w-1 h-1 bg-purple-400 rounded-full"></span>
+          Powered by UniGuide Academic Platform
+          <span className="inline-block w-1 h-1 bg-purple-400 rounded-full"></span>
+        </p>
       </div>
+
+      <style jsx>{`
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 0.3; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.05); }
+        }
+        .animate-pulse-slow {
+          animation: pulse-slow 8s ease-in-out infinite;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+      `}</style>
     </div>
   )
 }
