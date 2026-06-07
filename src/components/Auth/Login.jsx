@@ -144,6 +144,16 @@ const Login = () => {
               )}
             </div>
 
+            {/* ✅ Forgot Password Link - جديد */}
+            <div className="text-right">
+              <Link 
+                to="/forgot-password" 
+                className="text-sm text-purple-600 hover:text-purple-700 hover:underline font-medium transition-colors duration-300"
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             {/* Submit Button */}
             <button
               type="submit"
@@ -200,18 +210,7 @@ const Login = () => {
         </p>
       </div>
 
-      <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.05); }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-      `}</style>
+      
     </div>
   )
 }

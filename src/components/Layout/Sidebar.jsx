@@ -11,6 +11,8 @@ import {
   FileCheck,
   LayoutDashboard,
   Mail,
+  Activity,
+  TrendingUp,
 } from 'lucide-react'
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -30,6 +32,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/advisor/broadcast', icon: Send, label: 'Broadcast', color: 'text-blue-500' },
     { to: '/advisor/submitted-forms', icon: FileCheck, label: 'Submitted Forms', color: 'text-green-500' },
     { to: '/advisor/analytics', icon: BarChart3, label: 'Analytics', color: 'text-orange-500' },
+    // ✅ رابط جديد - Advisor Stats
+    { to: '/advisor/stats', icon: TrendingUp, label: 'My Stats', color: 'text-emerald-500' },
   ]
 
   const adminLinks = [
@@ -38,6 +42,8 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/admin/regulations', icon: BookOpen, label: 'Regulations', color: 'text-green-500' },
     { to: '/admin/university-emails', icon: Mail, label: 'University Emails', color: 'text-indigo-500' },
     { to: '/admin/analytics', icon: BarChart3, label: 'Analytics', color: 'text-orange-500' },
+    // ✅ رابط جديد - System Health
+    { to: '/system/health', icon: Activity, label: 'System Health', color: 'text-red-500' },
   ]
 
   // اختيار الروابط المناسبة

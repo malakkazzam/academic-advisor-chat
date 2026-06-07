@@ -11,6 +11,10 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
   const abortControllerRef = useRef(null)
   const isMounted = useRef(true)
 
+  // ✅ جديد - للبحث
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
+
   // eslint-disable-next-line no-unused-vars
   const [pinnedConversations, setPinnedConversations] = useState(() => {
     try {
@@ -94,6 +98,54 @@ const fetchConversations = useCallback(async () => {
     if (!conversationId) return
     setMessages([])
   }, [conversationId])
+
+  // ✅ جديد - أرشفة محادثة
+  const archiveConversation = useCallback(async (id) => {
+    try {
+      await chatApi.archiveConversation(id)
+      await fetchConversations()
+      toast.success('Conversation archived')
+    } catch (err) {
+      console.error('Archive error:', err)
+      toast.error('Failed to archive conversation')
+    }
+  }, [fetchConversations])
+
+  // ✅ جديد - تعليم رسالة كمقروءة
+  const markMessageAsRead = useCallback(async (messageId) => {
+    try {
+      await chatApi.markMessageAsRead(messageId)
+    } catch (err) {
+      console.error('Failed to mark as read:', err)
+    }
+  }, [])
+
+  // ✅ جديد - البحث في الرسائل
+  const searchMessages = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      return []
+    }
+    
+    setSearching(true)
+    try {
+      const res = await chatApi.searchMessages(query)
+      const results = res.data || []
+      setSearchResults(results)
+      return results
+    } catch (err) {
+      console.error('Search error:', err)
+      toast.error('Failed to search messages')
+      return []
+    } finally {
+      setSearching(false)
+    }
+  }, [])
+
+  // ✅ جديد - مسح نتائج البحث
+  const clearSearch = useCallback(() => {
+    setSearchResults([])
+  }, [])
 
   // إرسال رسالة إلى الـ AI
   const sendMessage = async (content) => {
@@ -276,6 +328,13 @@ const fetchConversations = useCallback(async () => {
     pinConversation,
     unpinConversation,
     isConversationPinned,
-    pinnedConversations
+    pinnedConversations,
+    // ✅ الحاجات الجديدة
+    searchMessages,
+    clearSearch,
+    searchResults,
+    searching,
+    archiveConversation,
+    markMessageAsRead
   }
 }
