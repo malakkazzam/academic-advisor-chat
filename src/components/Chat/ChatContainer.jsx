@@ -270,7 +270,9 @@ const handleSendMessage = async (content, attachment = null) => {
                       <UserCog size={18} className="text-purple-500" />
                       <div className="flex-1">
                         <div className="flex justify-between items-start">
-                          <span className="font-medium text-sm">{conv?.title || 'Academic Advisor'}</span>
+                          <span className="font-medium text-sm">
+  {conv?.title === 'محادثة مع المشرف الأكاديمي' ? 'Broadcast from Advisor' : (conv?.title || 'Academic Advisor')}
+</span>
                           <span className="text-xs text-gray-400">{formatRelativeDate(conv?.updatedAt)}</span>
                         </div>
                         <p className="text-xs text-gray-500 truncate">{conv?.lastMessage || 'No messages yet'}</p>
@@ -320,7 +322,8 @@ const handleSendMessage = async (content, attachment = null) => {
                     {sortedAllConversations.map((conv) => {
                       const isPinned = isConversationPinned(conv?.id)
                       const title = conv?.title || ''
-                      const isReadOnly = title.includes('محادثة مع المشرف الأكاديمي') || 
+                      const isReadOnly = title.includes('محادثة مع المشرف الأكاديمي') ||
+                                           title.includes('Broadcast from Advisor') || 
                                          title.includes('إعلان من المشرف') ||
                                          title.toLowerCase().includes('advisor') ||
                                          title.toLowerCase().includes('announcement')
