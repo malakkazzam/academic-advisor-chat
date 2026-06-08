@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "http://siraj.runasp.net/api/$1"
+      "destination": "https://siraj.runasp.net/api/$1"
     },
     {
       "source": "/(.*)",
