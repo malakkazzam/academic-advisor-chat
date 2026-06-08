@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
   Mail,
   Activity,
-  TrendingUp,
 } from 'lucide-react'
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -32,9 +31,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/advisor/broadcast', icon: Send, label: 'Broadcast', color: 'text-blue-500' },
     { to: '/advisor/submitted-forms', icon: FileCheck, label: 'Submitted Forms', color: 'text-green-500' },
     { to: '/advisor/analytics', icon: BarChart3, label: 'Analytics', color: 'text-orange-500' },
-    // ✅ رابط جديد - Advisor Stats
-    { to: '/advisor/stats', icon: TrendingUp, label: 'My Stats', color: 'text-emerald-500' },
-  ]
+    ]
 
   const adminLinks = [
     { to: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: 'text-purple-500' },

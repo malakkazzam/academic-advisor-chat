@@ -93,7 +93,6 @@ export const advisorApi = {
   getAvailableAdvisors: () => api.get('/Advisor/available-advisors'),
   getAdvisorAnalytics: () => api.get('/Advisor/analytics'),
   getStudentById: (id) => api.get(`/Advisor/students/${id}`),
-  getAdvisorStats: () => api.get('/Advisor/stats'),
   toggleStudentStatus: (studentId) => api.put(`/Advisor/students/${studentId}/toggle-status`),
   getStudentContact: (studentId) => api.get(`/Advisor/student-contact/${studentId}`),
 }

@@ -20,7 +20,6 @@ import AdvisorStudentChat from './components/Advisor/AdvisorStudentChat'
 import AdvisorBroadcast from './components/Advisor/AdvisorBroadcast'
 import AdvisorSubmittedForms from './components/Advisor/AdvisorSubmittedForms'
 import AdvisorAnalytics from './components/Advisor/AdvisorAnalytics'
-import AdvisorStats from './components/Advisor/AdvisorStats'
 
 // Admin
 import AdminDashboard from './components/Admin/AdminDashboard'
@@ -71,7 +70,6 @@ function App() {
           <Route path="/advisor/broadcast" element={<AdvisorBroadcast />} />
           <Route path="/advisor/submitted-forms" element={<AdvisorSubmittedForms />} />
           <Route path="/advisor/analytics" element={<AdvisorAnalytics />} />
-          <Route path="/advisor/stats" element={<AdvisorStats />} />
         </Route>
       </Route>
 
