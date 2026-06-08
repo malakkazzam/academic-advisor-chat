@@ -1,6 +1,6 @@
 // src/components/Student/StudentMyRegistrations.jsx
 import useSWR from 'swr'
-import { registrationApi, regulationsApi } from '../../lib/api' // تأكد من وجود regulationsApi
+import { registrationApi } from '../../lib/api'
 import { toast } from 'sonner'
 import { Loader2, FileText, Download, Eye, CheckCircle, XCircle, Clock, X } from 'lucide-react'
 import { useState } from 'react'
@@ -8,13 +8,10 @@ import { useState } from 'react'
 const StudentMyRegistrations = () => {
   const { data, isLoading, error } = useSWR('my-registrations', registrationApi.getMyRegistrations)
   const [downloading, setDownloading] = useState(null)
-  
-  // States for the modal viewer
-  const [viewingRegulation, setViewingRegulation] = useState(null)
-  const [regulationContent, setRegulationContent] = useState(null)
+  const [viewingFile, setViewingFile] = useState(null)
+  const [fileContent, setFileContent] = useState(null)
   const [isModalLoading, setIsModalLoading] = useState(false)
 
-  // استخراج البيانات بأمان
   const registrations = Array.isArray(data) ? data : (data?.data ? (Array.isArray(data.data) ? data.data : []) : [])
 
   const getStatusBadge = (status) => {
@@ -61,30 +58,16 @@ const StudentMyRegistrations = () => {
     }
   }
 
-  // --- Modified View Handler ---
-  const handleViewRegulation = async (regulationId, regulationTitle) => {
-    if (!regulationId) {
-      toast.error('No regulation associated with this registration.')
+  const handleView = async (fileUrl, fileName) => {
+    if (!fileUrl) {
+      toast.error('No file attached')
       return
     }
-
+    
     setIsModalLoading(true)
-    setViewingRegulation({ id: regulationId, title: regulationTitle || 'Regulation' })
-
+    setViewingFile({ url: fileUrl, name: fileName })
+    
     try {
-      // 1. Fetch the regulation data from your API
-      // Assuming you have a function like regulationsApi.getById
-      const regulationData = await regulationsApi.getById(regulationId)
-      
-      // Extract the file URL from the response (adjust path as needed)
-      // Common field names: fileUrl, file_url, attachmentUrl, filePath
-      const fileUrl = regulationData?.fileUrl || regulationData?.file_url || regulationData?.attachmentUrl || regulationData?.filePath
-      
-      if (!fileUrl) {
-        throw new Error('Regulation file URL not found.')
-      }
-
-      // 2. Fetch the actual file using the token
       const token = localStorage.getItem('token')
       let fullUrl = fileUrl
       if (fileUrl.startsWith('/')) {
@@ -94,28 +77,27 @@ const StudentMyRegistrations = () => {
       const response = await fetch(fullUrl, {
         headers: { 'Authorization': `Bearer ${token}` }
       })
-
-      if (!response.ok) throw new Error('Failed to load regulation file')
+      
+      if (!response.ok) throw new Error('Failed to load file')
       
       const blob = await response.blob()
       const url = URL.createObjectURL(blob)
-      setRegulationContent(url)
-      
+      setFileContent(url)
     } catch (err) {
-      console.error('Error viewing regulation:', err)
-      toast.error(err.message || 'Failed to load regulation')
-      setViewingRegulation(null) // Close modal on error
+      console.error('View error:', err)
+      toast.error('Failed to load file')
+      setViewingFile(null)
     } finally {
       setIsModalLoading(false)
     }
   }
 
   const closeModal = () => {
-    if (regulationContent) {
-      URL.revokeObjectURL(regulationContent) // Clean up the object URL
+    if (fileContent) {
+      URL.revokeObjectURL(fileContent)
     }
-    setViewingRegulation(null)
-    setRegulationContent(null)
+    setViewingFile(null)
+    setFileContent(null)
   }
 
   if (isLoading) {
@@ -158,9 +140,6 @@ const StudentMyRegistrations = () => {
               const StatusIcon = status.icon
               const fileUrl = form.fileUrl || form.file_url || form.attachmentUrl || form.filePath
               const fileName = form.fileName || form.originalFileName || 'document'
-              // Get regulation details from the form object
-              const regulationId = form.regulationId || form.regulation_id
-              const regulationTitle = form.regulationTitle || form.regulation_title || `Regulation for Level ${form.academicLevel}`
 
               return (
                 <div key={form.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition">
@@ -206,14 +185,15 @@ const StudentMyRegistrations = () => {
                             Download
                           </button>
                         )}
-                        {/* --- Modified View Button --- */}
-                        <button
-                          onClick={() => handleViewRegulation(regulationId, regulationTitle)}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-600 transition text-sm"
-                        >
-                          <Eye className="h-4 w-4" />
-                          View Regulation
-                        </button>
+                        {fileUrl && (
+                          <button
+                            onClick={() => handleView(fileUrl, fileName)}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-600 transition text-sm"
+                          >
+                            <Eye className="h-4 w-4" />
+                            View
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -224,14 +204,13 @@ const StudentMyRegistrations = () => {
         )}
       </div>
 
-      {/* --- Modal for Viewing Regulation --- */}
-      {viewingRegulation && (
+      {/* Modal Viewer */}
+      {viewingFile && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
             <div className="flex items-center justify-between p-4 border-b">
               <h3 className="font-semibold text-gray-800">
-                {viewingRegulation.title}
+                {viewingFile.name || 'Document Viewer'}
               </h3>
               <button
                 onClick={closeModal}
@@ -241,21 +220,20 @@ const StudentMyRegistrations = () => {
               </button>
             </div>
             
-            {/* Modal Content */}
             <div className="flex-1 overflow-auto p-4 bg-gray-50">
               {isModalLoading ? (
                 <div className="flex justify-center items-center h-64">
                   <Loader2 className="animate-spin h-8 w-8 text-purple-600" />
                 </div>
-              ) : regulationContent ? (
+              ) : fileContent ? (
                 <iframe
-                  src={regulationContent}
+                  src={fileContent}
                   className="w-full h-[70vh] rounded-lg border-0"
-                  title="Regulation Viewer"
+                  title="Document Viewer"
                 />
               ) : (
                 <div className="text-center py-12 text-gray-500">
-                  Unable to load the regulation file.
+                  Unable to load the file.
                 </div>
               )}
             </div>
