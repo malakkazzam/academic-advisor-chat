@@ -147,13 +147,15 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
 
   // ✅ جديد - إرسال رسالة بصورة
 
+// src/hooks/useChat.js - عدل دالة sendMessageWithAttachment كده
+
 const sendMessageWithAttachment = async (message, attachmentFile) => {
   if ((!message?.trim() && !attachmentFile) || isSending) return;
 
   setIsSending(true);
   setLoading(true);
 
-  // 1. إنشاء صورة معاينة (Preview) فورية للمستخدم
+  // إنشاء معاينة للصورة
   const imagePreviewUrl = attachmentFile ? URL.createObjectURL(attachmentFile) : null;
 
   const userMessage = {
@@ -161,7 +163,7 @@ const sendMessageWithAttachment = async (message, attachmentFile) => {
     role: 'user',
     content: message || (attachmentFile ? '📎 Sent an image' : ''),
     timestamp: new Date().toISOString(),
-    attachment: imagePreviewUrl, // هذه هي الصورة التي ستظهر في الشات فوراً
+    attachment: imagePreviewUrl,
     attachmentName: attachmentFile?.name,
   };
 
@@ -176,25 +178,20 @@ const sendMessageWithAttachment = async (message, attachmentFile) => {
   setMessages(prev => [...prev, userMessage, typingMessage]);
 
   try {
-    let response;
-    // ✅ حالة وجود مرفق (صورة): أرسل كـ FormData
+    const formData = new FormData();
+    
+    // ✅ بالضبط زي ما اشتغل في الاختبار
+    formData.append('Message', message || '');
+    formData.append('ConversationId', conversationId || '');
+    
     if (attachmentFile) {
-      const formData = new FormData();
-      formData.append('Message', message || '');
-      if (conversationId) formData.append('ConversationId', conversationId);
       formData.append('Attachment', attachmentFile);
-      response = await chatApi.sendMessageWithAttachment(formData);
-    } 
-    // ✅ حالة عدم وجود مرفق (نص فقط): أرسل كـ JSON
-    else {
-      const payload = {
-        message: message,
-        conversationId: conversationId,
-      };
-      response = await chatApi.sendMessage(payload);
     }
+    
+    // ✅ استخدم نفس الـ API call اللي اشتغل
+    const res = await chatApi.sendMessageWithAttachment(formData);
+    const data = res.data;
 
-    const data = response.data;
     let aiContent = "I'm processing your request. Please wait a moment.";
     let aiSender = 'assistant';
 
@@ -221,17 +218,21 @@ const sendMessageWithAttachment = async (message, attachmentFile) => {
     }
   } catch (error) {
     console.error('Send message with attachment error:', error);
+    // ✅ اعرض الخطأ اللي جاي من السيرفر
+    const errorMsg = error.response?.data?.message || error.response?.data || 'Failed to send message';
+    console.log('Server error response:', errorMsg);
+    
     setMessages(prev => {
       const filtered = prev.filter(msg => !msg.isTyping);
       return [...filtered, {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: `⚠️ Error: ${error.response?.data?.message || 'Failed to send message'}`,
+        content: `⚠️ ${errorMsg}`,
         timestamp: new Date().toISOString(),
         isError: true,
       }];
     });
-    toast.error(error.response?.data?.message || 'Failed to send message');
+    toast.error(errorMsg);
   } finally {
     setIsSending(false);
     setLoading(false);
