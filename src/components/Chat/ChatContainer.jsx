@@ -29,6 +29,7 @@ const ChatContainer = () => {
     fetchConversations,
     deleteConversation,
     clearCurrentChat,
+   sendMessageWithAttachment,
     pinConversation,
     unpinConversation,
     isConversationPinned,
@@ -81,22 +82,28 @@ const ChatContainer = () => {
     return () => clearInterval(interval)
   }, [loadConversations])
 
-  const handleSendMessage = async (content) => {
-    if (readOnlyChat) {
-      toast.error('This conversation is read-only. You cannot send messages here.')
-      return
-    }
-    if (chatType === 'ai') {
-      const result = await sendMessage(content)
-      if (result?.newConversationId) {
-        setSelectedConversation(result.newConversationId)
-        if (isMobile) setSidebarOpen(false)
-      }
-    } else {
-      await sendToAdvisorOnly(content)
-    }
-    setTimeout(() => loadConversations(), 500)
+const handleSendMessage = async (content, attachment = null) => {
+  if (readOnlyChat) {
+    toast.error('This conversation is read-only. You cannot send messages here.')
+    return
   }
+  
+  if (chatType === 'ai') {
+    let result
+    if (attachment) {
+      result = await sendMessageWithAttachment(content, attachment)
+    } else {
+      result = await sendMessage(content)
+    }
+    if (result?.newConversationId) {
+      setSelectedConversation(result.newConversationId)
+      if (isMobile) setSidebarOpen(false)
+    }
+  } else {
+    await sendToAdvisorOnly(content)
+  }
+  setTimeout(() => loadConversations(), 500)
+}
 
   const handleNewChat = () => {
     setSelectedConversation(null)

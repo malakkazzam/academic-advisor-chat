@@ -72,6 +72,9 @@ export const chatApi = {
   getStudentRegulations: () => api.get('/Chat/regulations'),
   archiveConversation: (id) => api.put(`/Chat/conversations/${id}/archive`),
   markMessageAsRead: (messageId) => api.put(`/Chat/messages/${messageId}/read`),
+  sendMessageWithAttachment: (formData) => api.post('/Chat/send', formData, {
+  headers: { 'Content-Type': 'multipart/form-data' }
+}),
   searchMessages: (query) => api.get('/Chat/messages/search', { params: { q: query } }),
 }
 
