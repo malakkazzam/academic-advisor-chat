@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '../stores/authStore'
 
 const API_URL = '/api'
 
@@ -8,24 +9,42 @@ const api = axios.create({
   timeout: 30000,
 })
 
+// ✅ Request interceptor – إضافة التوكن من الـ store
+api.interceptors.request.use(
+  (config) => {
+    const token = useAuthStore.getState().token
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error)
+)
+
+// ✅ Response interceptor – معالجة الأخطاء
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // ✅ معالجة 429 من غير reload
+    // معالجة 429 - Rate Limit (من غير reload)
     if (error.response?.status === 429) {
       console.warn('Rate limit (429) - request ignored')
       return Promise.reject(error)
     }
     
-    // ✅ معالجة 401 - مرة واحدة بس
+    // معالجة 401 - Unauthorized
     if (error.response?.status === 401) {
-      const token = localStorage.getItem('token')
+      const { token, logout } = useAuthStore.getState()
       const currentPath = window.location.pathname
       
+      // لو فيه توكن ولسنا في صفحة login
       if (token && !currentPath.includes('/login')) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        window.location.href = '/login'
+        console.warn('401 Unauthorized - logging out')
+        logout()
+        
+        // تجنب الـ reload المتكرر
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
       }
     }
     

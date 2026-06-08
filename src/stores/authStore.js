@@ -1,3 +1,4 @@
+// src/stores/authStore.js
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
@@ -8,11 +9,9 @@ export const useAuthStore = create(
       token: null,
       isAuthenticated: false,
       setAuth: (user, token) => {
-        localStorage.setItem('token', token)
         set({ user, token, isAuthenticated: true })
       },
       logout: () => {
-        localStorage.removeItem('token')
         set({ user: null, token: null, isAuthenticated: false })
       },
       updateUser: (userData) =>
@@ -20,6 +19,9 @@ export const useAuthStore = create(
           user: state.user ? { ...state.user, ...userData } : null,
         })),
     }),
-    { name: 'uniguide-auth' }
+    {
+      name: 'uniguide-auth',
+      getStorage: () => localStorage,
+    }
   )
 )
