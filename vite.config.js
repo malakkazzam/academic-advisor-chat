@@ -8,7 +8,7 @@ server: {
   open: true,
   proxy: {
     '/api': {
-      target: 'https://siraj.runasp.net',
+      target: 'http://siraj.runasp.net',
       changeOrigin: true,
       rewrite: (path) => path.replace(/^\/api/, '/api')
     }

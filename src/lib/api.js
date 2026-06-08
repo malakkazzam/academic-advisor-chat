@@ -9,15 +9,24 @@ const api = axios.create({
 })
 
 // Request interceptor – إضافة التوكن
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // ✅ منع الـ reload المتكرر
+      const token = localStorage.getItem('token')
+      if (token) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        // ✅ استخدم React Router بدل window.location
+        // لكن لو مضطر تستخدمها، اعملها مرة واحدة بس
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login'
+        }
+      }
     }
-    return config
-  },
-  (error) => Promise.reject(error)
+    return Promise.reject(error)
+  }
 )
 
 // Response interceptor – التعامل مع 401
