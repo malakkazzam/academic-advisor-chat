@@ -146,99 +146,97 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
   }, [])
 
   // ✅ جديد - إرسال رسالة بصورة
-  const sendMessageWithAttachment = async (message, attachmentFile) => {
-    if ((!message?.trim() && !attachmentFile) || isSending) return
 
-    setIsSending(true)
-    setLoading(true)
+const sendMessageWithAttachment = async (message, attachmentFile) => {
+  if ((!message?.trim() && !attachmentFile) || isSending) return;
 
-    const imagePreviewUrl = attachmentFile ? URL.createObjectURL(attachmentFile) : null
+  setIsSending(true);
+  setLoading(true);
 
-    const userMessage = {
-      id: `user-${Date.now()}`,
-      role: 'user',
-      content: message || (attachmentFile ? '📎 Sent an image' : ''),
-      timestamp: new Date().toISOString(),
-      attachment: imagePreviewUrl,
-      attachmentFile: attachmentFile,
-      attachmentName: attachmentFile?.name
+  // 1. إنشاء صورة معاينة (Preview) فورية للمستخدم
+  const imagePreviewUrl = attachmentFile ? URL.createObjectURL(attachmentFile) : null;
+
+  const userMessage = {
+    id: `user-${Date.now()}`,
+    role: 'user',
+    content: message || (attachmentFile ? '📎 Sent an image' : ''),
+    timestamp: new Date().toISOString(),
+    attachment: imagePreviewUrl, // هذه هي الصورة التي ستظهر في الشات فوراً
+    attachmentName: attachmentFile?.name,
+  };
+
+  const typingMessage = {
+    id: `typing-${Date.now()}`,
+    role: 'assistant',
+    content: '',
+    isTyping: true,
+    timestamp: new Date().toISOString(),
+  };
+
+  setMessages(prev => [...prev, userMessage, typingMessage]);
+
+  try {
+    let response;
+    // ✅ حالة وجود مرفق (صورة): أرسل كـ FormData
+    if (attachmentFile) {
+      const formData = new FormData();
+      formData.append('Message', message || '');
+      if (conversationId) formData.append('ConversationId', conversationId);
+      formData.append('Attachment', attachmentFile);
+      response = await chatApi.sendMessageWithAttachment(formData);
+    } 
+    // ✅ حالة عدم وجود مرفق (نص فقط): أرسل كـ JSON
+    else {
+      const payload = {
+        message: message,
+        conversationId: conversationId,
+      };
+      response = await chatApi.sendMessage(payload);
     }
 
-    const typingMessage = {
-      id: `typing-${Date.now()}`,
-      role: 'assistant',
-      content: '',
-      isTyping: true,
-      timestamp: new Date().toISOString()
+    const data = response.data;
+    let aiContent = "I'm processing your request. Please wait a moment.";
+    let aiSender = 'assistant';
+
+    if (data && typeof data === 'object') {
+      if (data.content) aiContent = data.content;
+      else if (data.assistantMessage) aiContent = data.assistantMessage.content || data.assistantMessage;
+      else if (data.message) aiContent = data.message;
+      else if (data.response) aiContent = data.response;
     }
 
-    setMessages(prev => [...prev, userMessage, typingMessage])
+    setMessages(prev => {
+      const filtered = prev.filter(msg => !msg.isTyping);
+      const aiMessage = {
+        id: data?.id || `ai-${Date.now()}`,
+        role: aiSender,
+        content: aiContent,
+        timestamp: data?.timestamp || new Date().toISOString(),
+      };
+      return [...filtered, aiMessage];
+    });
 
-    try {
-      const formData = new FormData()
-      formData.append('Message', message || '')
-      if (attachmentFile) {
-        formData.append('Attachment', attachmentFile)
-      }
-      if (conversationId) {
-        formData.append('ConversationId', conversationId)
-      }
-
-      const res = await chatApi.sendMessageWithAttachment(formData)
-      const data = res.data
-
-      let aiContent = null
-      let aiSender = 'assistant'
-
-      if (data && typeof data === 'object') {
-        if (data.content) {
-          aiContent = data.content
-          if (data.sender === 'Bot') aiSender = 'assistant'
-          else if (data.sender) aiSender = data.sender.toLowerCase()
-        } else if (data.assistantMessage) {
-          aiContent = data.assistantMessage.content || data.assistantMessage
-        } else if (data.message) {
-          aiContent = data.message
-        } else if (data.response) {
-          aiContent = data.response
-        }
-      }
-
-      setMessages(prev => {
-        const filtered = prev.filter(msg => !msg.isTyping)
-        if (!aiContent) {
-          aiContent = "I'm processing your request. Please wait a moment."
-        }
-        const aiMessage = {
-          id: data?.id || `ai-${Date.now()}`,
-          role: aiSender,
-          content: aiContent,
-          timestamp: data?.timestamp || new Date().toISOString()
-        }
-        return [...filtered, aiMessage]
-      })
-
-      if (!conversationId && data?.conversationId) {
-        setTimeout(() => fetchConversations(), 500)
-      }
-    } catch (error) {
-      console.error('Send message with attachment error:', error)
-      setMessages(prev => {
-        const filtered = prev.filter(msg => !msg.isTyping)
-        return [...filtered, {
-          id: `error-${Date.now()}`,
-          role: 'assistant',
-          content: '⚠️ Sorry, I encountered an error. Please try again later.',
-          timestamp: new Date().toISOString(),
-          isError: true
-        }]
-      })
-      toast.error('Failed to send message')
-    } finally {
-      setIsSending(false)
-      setLoading(false)
+    if (!conversationId && data?.conversationId) {
+      setTimeout(() => fetchConversations(), 500);
     }
+  } catch (error) {
+    console.error('Send message with attachment error:', error);
+    setMessages(prev => {
+      const filtered = prev.filter(msg => !msg.isTyping);
+      return [...filtered, {
+        id: `error-${Date.now()}`,
+        role: 'assistant',
+        content: `⚠️ Error: ${error.response?.data?.message || 'Failed to send message'}`,
+        timestamp: new Date().toISOString(),
+        isError: true,
+      }];
+    });
+    toast.error(error.response?.data?.message || 'Failed to send message');
+  } finally {
+    setIsSending(false);
+    setLoading(false);
   }
+};
 
   // إرسال رسالة إلى الـ AI
   const sendMessage = async (content) => {
