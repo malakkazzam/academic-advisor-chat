@@ -13,6 +13,8 @@ import ChatContainer from './components/Chat/ChatContainer'
 import StudentRegulations from './components/Student/StudentRegulations'
 import StudentRegistrationForm from './components/Student/StudentRegistrationForm'
 import ChooseAdvisor from './components/Student/ChooseAdvisor'
+import StudentMyRegistrations from './components/Student/StudentMyRegistrations'
+
 
 // Advisor
 import AdvisorStudents from './components/Advisor/AdvisorStudents'
@@ -59,6 +61,8 @@ function App() {
           <Route path="/student/regulations" element={<StudentRegulations />} />
           <Route path="/student/submit-form" element={<StudentRegistrationForm />} />
           <Route path="/student/choose-advisor" element={<ChooseAdvisor />} />
+          <Route path="/student/my-registrations" element={<StudentMyRegistrations />} />
+
         </Route>
       </Route>
 

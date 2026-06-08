@@ -24,6 +24,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/student/regulations', icon: BookOpen, label: 'Regulations', color: 'text-blue-500' },
     { to: '/student/submit-form', icon: FileText, label: 'Submit Form', color: 'text-green-500' },
     { to: '/student/choose-advisor', icon: UserCheck, label: 'Choose Advisor', color: 'text-orange-500' },
+      { to: '/student/my-registrations', icon: FileCheck, label: 'My Registrations', color: 'text-indigo-500' },
   ]
 
   const advisorLinks = [
