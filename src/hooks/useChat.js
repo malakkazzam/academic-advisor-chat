@@ -172,10 +172,13 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
     // معاينة الصورة
     const imagePreviewUrl = attachmentFile ? URL.createObjectURL(attachmentFile) : null
 
+    // ✅ تحديد نص الرسالة: إذا كان النص فارغاً ويوجد صورة، أرسل نصاً افتراضياً
+    const messageText = content?.trim() || (attachmentFile ? '📎 أرسلت صورة' : '')
+
     const userMessage = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: content || (attachmentFile ? '📎 Sent an image' : ''),
+      content: messageText,
       timestamp: new Date().toISOString(),
       attachment: imagePreviewUrl,
       attachmentName: attachmentFile?.name,
@@ -193,7 +196,8 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
 
     try {
       const formData = new FormData()
-      formData.append('Message', content || '')
+      // ✅ إرسال النص (مضمون أنه غير فارغ)
+      formData.append('Message', messageText)
       formData.append('ConversationId', conversationId || '')
       
       if (attachmentFile) {
