@@ -1,4 +1,3 @@
-// src/hooks/useChat.js - النسخة الأصلية اللي كانت شغالة
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { chatApi } from '../lib/api'
 import { toast } from 'sonner'
@@ -11,6 +10,10 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
   const isFetchingRef = useRef(false)
   const abortControllerRef = useRef(null)
   const isMounted = useRef(true)
+
+  // جديد - للبحث
+  const [searchResults, setSearchResults] = useState([])
+  const [searching, setSearching] = useState(false)
 
   // eslint-disable-next-line no-unused-vars
   const [pinnedConversations, setPinnedConversations] = useState(() => {
@@ -93,6 +96,149 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
     if (!conversationId) return
     setMessages([])
   }, [conversationId])
+
+  // ✅ جديد - أرشفة محادثة
+  const archiveConversation = useCallback(async (id) => {
+    try {
+      await chatApi.archiveConversation(id)
+      await fetchConversations()
+      toast.success('Conversation archived')
+    } catch (err) {
+      console.error('Archive error:', err)
+      toast.error('Failed to archive conversation')
+    }
+  }, [fetchConversations])
+
+  // ✅ جديد - تعليم رسالة كمقروءة
+  const markMessageAsRead = useCallback(async (messageId) => {
+    try {
+      await chatApi.markMessageAsRead(messageId)
+    } catch (err) {
+      console.error('Failed to mark as read:', err)
+    }
+  }, [])
+
+  // ✅ جديد - البحث في الرسائل
+  const searchMessages = useCallback(async (query) => {
+    if (!query.trim()) {
+      setSearchResults([])
+      return []
+    }
+    
+    setSearching(true)
+    try {
+      const res = await chatApi.searchMessages(query)
+      const results = res.data || []
+      setSearchResults(results)
+      return results
+    } catch (err) {
+      console.error('Search error:', err)
+      toast.error('Failed to search messages')
+      return []
+    } finally {
+      setSearching(false)
+    }
+  }, [])
+
+  // ✅ جديد - مسح نتائج البحث
+  const clearSearch = useCallback(() => {
+    setSearchResults([])
+  }, [])
+
+  // ✅ جديد - إرسال رسالة بصورة
+  const sendMessageWithAttachment = async (message, attachmentFile) => {
+    if ((!message?.trim() && !attachmentFile) || isSending) return
+
+    setIsSending(true)
+    setLoading(true)
+
+    const imagePreviewUrl = attachmentFile ? URL.createObjectURL(attachmentFile) : null
+
+    const userMessage = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: message || (attachmentFile ? '📎 Sent an image' : ''),
+      timestamp: new Date().toISOString(),
+      attachment: imagePreviewUrl,
+      attachmentFile: attachmentFile,
+      attachmentName: attachmentFile?.name
+    }
+
+    const typingMessage = {
+      id: `typing-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      isTyping: true,
+      timestamp: new Date().toISOString()
+    }
+
+    setMessages(prev => [...prev, userMessage, typingMessage])
+
+    try {
+      const formData = new FormData()
+      formData.append('Message', message || '')
+      if (attachmentFile) {
+        formData.append('Attachment', attachmentFile)
+      }
+      if (conversationId) {
+        formData.append('ConversationId', conversationId)
+      }
+
+      const res = await chatApi.sendMessageWithAttachment(formData)
+      const data = res.data
+
+      let aiContent = null
+      let aiSender = 'assistant'
+
+      if (data && typeof data === 'object') {
+        if (data.content) {
+          aiContent = data.content
+          if (data.sender === 'Bot') aiSender = 'assistant'
+          else if (data.sender) aiSender = data.sender.toLowerCase()
+        } else if (data.assistantMessage) {
+          aiContent = data.assistantMessage.content || data.assistantMessage
+        } else if (data.message) {
+          aiContent = data.message
+        } else if (data.response) {
+          aiContent = data.response
+        }
+      }
+
+      setMessages(prev => {
+        const filtered = prev.filter(msg => !msg.isTyping)
+        if (!aiContent) {
+          aiContent = "I'm processing your request. Please wait a moment."
+        }
+        const aiMessage = {
+          id: data?.id || `ai-${Date.now()}`,
+          role: aiSender,
+          content: aiContent,
+          timestamp: data?.timestamp || new Date().toISOString()
+        }
+        return [...filtered, aiMessage]
+      })
+
+      if (!conversationId && data?.conversationId) {
+        setTimeout(() => fetchConversations(), 500)
+      }
+    } catch (error) {
+      console.error('Send message with attachment error:', error)
+      setMessages(prev => {
+        const filtered = prev.filter(msg => !msg.isTyping)
+        return [...filtered, {
+          id: `error-${Date.now()}`,
+          role: 'assistant',
+          content: '⚠️ Sorry, I encountered an error. Please try again later.',
+          timestamp: new Date().toISOString(),
+          isError: true
+        }]
+      })
+      toast.error('Failed to send message')
+    } finally {
+      setIsSending(false)
+      setLoading(false)
+    }
+  }
 
   // إرسال رسالة إلى الـ AI
   const sendMessage = async (content) => {
@@ -193,100 +339,6 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
     }
   }
 
-
-  // ✅ جديد - إرسال رسالة بصورة
-const sendMessageWithAttachment = async (message, attachment) => {
-  if ((!message.trim() && !attachment) || isSending) return
-
-  setIsSending(true)
-  setLoading(true)
-
-  const formData = new FormData()
-  formData.append('Message', message)
-  if (attachment) {
-    formData.append('Attachment', attachment)
-  }
-  if (conversationId) {
-    formData.append('ConversationId', conversationId)
-  }
-
-  const userMessage = {
-    id: `user-${Date.now()}`,
-    role: 'user',
-    content: message || (attachment ? '📎 Sent an attachment' : ''),
-    timestamp: new Date().toISOString(),
-    attachment: attachment ? URL.createObjectURL(attachment) : null,
-    attachmentName: attachment?.name
-  }
-
-  const typingMessage = {
-    id: `typing-${Date.now()}`,
-    role: 'assistant',
-    content: '',
-    isTyping: true,
-    timestamp: new Date().toISOString()
-  }
-
-  setMessages(prev => [...prev, userMessage, typingMessage])
-
-  try {
-    const res = await chatApi.sendMessageWithAttachment(formData)
-    const data = res.data
-
-    let aiContent = null
-    let aiSender = 'assistant'
-
-    if (data && typeof data === 'object') {
-      if (data.content) {
-        aiContent = data.content
-        if (data.sender === 'Bot') aiSender = 'assistant'
-        else if (data.sender) aiSender = data.sender.toLowerCase()
-      } else if (data.assistantMessage) {
-        aiContent = data.assistantMessage.content || data.assistantMessage
-      } else if (data.message) {
-        aiContent = data.message
-      } else if (data.response) {
-        aiContent = data.response
-      }
-    }
-
-    setMessages(prev => {
-      const filtered = prev.filter(msg => !msg.isTyping)
-      if (!aiContent) {
-        aiContent = "I'm processing your request. Please wait a moment."
-      }
-      const aiMessage = {
-        id: data?.id || `ai-${Date.now()}`,
-        role: aiSender,
-        content: aiContent,
-        timestamp: data?.timestamp || new Date().toISOString()
-      }
-      return [...filtered, aiMessage]
-    })
-
-    if (!conversationId && data?.conversationId) {
-      setTimeout(() => fetchConversations(), 500)
-    }
-  } catch (error) {
-    console.error('Send message with attachment error:', error)
-    setMessages(prev => {
-      const filtered = prev.filter(msg => !msg.isTyping)
-      return [...filtered, {
-        id: `error-${Date.now()}`,
-        role: 'assistant',
-        content: '⚠️ Sorry, I encountered an error. Please try again later.',
-        timestamp: new Date().toISOString(),
-        isError: true
-      }]
-    })
-    toast.error('Failed to send message')
-  } finally {
-    setIsSending(false)
-    setLoading(false)
-  }
-}
-
-
   // إرسال رسالة إلى المستشار الأكاديمي
   const sendToAdvisorOnly = async (content) => {
     if (!content.trim() || isSending) return
@@ -327,7 +379,6 @@ const sendMessageWithAttachment = async (message, attachment) => {
     }
   }
 
-  // ✅ الـ useEffect اللي كان شغال - رجعته زي ما كان
   useEffect(() => {
     isMounted.current = true
     const timeoutId = setTimeout(() => {
@@ -359,6 +410,7 @@ const sendMessageWithAttachment = async (message, attachment) => {
     loading,
     isSending,
     sendMessage,
+    sendMessageWithAttachment,
     sendToAdvisorOnly,
     fetchConversations,
     deleteConversation,
@@ -366,7 +418,12 @@ const sendMessageWithAttachment = async (message, attachment) => {
     pinConversation,
     unpinConversation,
     isConversationPinned,
-     sendMessageWithAttachment,
-    pinnedConversations
+    pinnedConversations,
+    searchMessages,
+    clearSearch,
+    searchResults,
+    searching,
+    archiveConversation,
+    markMessageAsRead
   }
 }

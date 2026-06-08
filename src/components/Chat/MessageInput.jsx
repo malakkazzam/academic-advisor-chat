@@ -12,7 +12,6 @@ const MessageInput = ({ onSend, disabled, placeholder }) => {
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    // لو في صورة مرفوعة، ابعت بالصورة
     if (attachment && !disabled && !isUploading) {
       setIsUploading(true)
       onSend(message, attachment)
@@ -23,7 +22,6 @@ const MessageInput = ({ onSend, disabled, placeholder }) => {
       return
     }
     
-    // لو في نص فقط
     if (message.trim() && !disabled) {
       onSend(message.trim(), null)
       setMessage('')
@@ -45,14 +43,12 @@ const MessageInput = ({ onSend, disabled, placeholder }) => {
     const file = e.target.files[0]
     if (!file) return
     
-    // التحقق من نوع الملف (صور فقط)
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg']
     if (!allowedTypes.includes(file.type)) {
       toast.error('Please select an image file (JPEG, PNG, GIF, WEBP)')
       return
     }
     
-    // التحقق من الحجم (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('Image size must be less than 5MB')
       return
@@ -68,7 +64,6 @@ const MessageInput = ({ onSend, disabled, placeholder }) => {
 
   return (
     <div className="border-t p-3 bg-white rounded-b-xl">
-      {/* معاينة الصورة المرفوعة */}
       {attachment && (
         <div className="mb-2 p-2 bg-gray-100 rounded-lg flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -89,7 +84,6 @@ const MessageInput = ({ onSend, disabled, placeholder }) => {
       )}
       
       <form onSubmit={handleSubmit} className="flex gap-2">
-        {/* زر رفع الصور */}
         <input
           type="file"
           ref={fileInputRef}
@@ -107,10 +101,8 @@ const MessageInput = ({ onSend, disabled, placeholder }) => {
           <Paperclip size={20} />
         </button>
         
-        {/* Voice Recorder */}
         <VoiceRecorder onRecordingComplete={handleVoiceRecorded} />
         
-        {/* حقل الكتابة */}
         <input
           type="text"
           value={message}
@@ -120,7 +112,6 @@ const MessageInput = ({ onSend, disabled, placeholder }) => {
           className="flex-1 border border-gray-200 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-50"
         />
         
-        {/* زر الإرسال */}
         <button
           type="submit"
           disabled={disabled || (!message.trim() && !attachment) || isUploading}

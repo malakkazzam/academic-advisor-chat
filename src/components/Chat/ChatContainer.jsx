@@ -92,6 +92,8 @@ const handleSendMessage = async (content, attachment = null) => {
     let result
     if (attachment) {
       result = await sendMessageWithAttachment(content, attachment)
+    } else if (typeof content === 'object' && content.type === 'audio') {
+      result = await sendMessage(content)
     } else {
       result = await sendMessage(content)
     }
