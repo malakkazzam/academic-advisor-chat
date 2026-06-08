@@ -62,8 +62,12 @@ export const userApi = {
 
 // ==================== CHAT API ====================
 export const chatApi = {
-  sendMessage: (data) => api.post('/Chat/send', data),
-  getConversations: () => api.get('/Chat/conversations'),
+  sendMessage: (data) => {
+    // لو data كانت FormData، axios هيتعامل معاها تلقائياً
+    return api.post('/Chat/send', data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : { 'Content-Type': 'application/json' }
+    })
+  },  getConversations: () => api.get('/Chat/conversations'),
   getConversation: (id) => api.get(`/Chat/conversations/${id}`),
   deleteConversation: (id) => api.delete(`/Chat/conversations/${id}`),
   sendToAdvisor: (message) => api.post('/Chat/send-to-advisor', { message }),
@@ -72,9 +76,6 @@ export const chatApi = {
   getStudentRegulations: () => api.get('/Chat/regulations'),
   archiveConversation: (id) => api.put(`/Chat/conversations/${id}/archive`),
   markMessageAsRead: (messageId) => api.put(`/Chat/messages/${messageId}/read`),
-  sendMessageWithAttachment: (formData) => api.post('/Chat/send', formData, {
-  headers: { 'Content-Type': 'multipart/form-data' }
-}),
   searchMessages: (query) => api.get('/Chat/messages/search', { params: { q: query } }),
 }
 

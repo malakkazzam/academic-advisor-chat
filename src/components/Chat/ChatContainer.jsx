@@ -29,7 +29,6 @@ const ChatContainer = () => {
     fetchConversations,
     deleteConversation,
     clearCurrentChat,
-   sendMessageWithAttachment,
     pinConversation,
     unpinConversation,
     isConversationPinned,
@@ -82,6 +81,8 @@ const ChatContainer = () => {
     return () => clearInterval(interval)
   }, [loadConversations])
 
+// src/components/Chat/ChatContainer.jsx
+
 const handleSendMessage = async (content, attachment = null) => {
   if (readOnlyChat) {
     toast.error('This conversation is read-only. You cannot send messages here.')
@@ -89,17 +90,13 @@ const handleSendMessage = async (content, attachment = null) => {
   }
   
   if (chatType === 'ai') {
-    let result
+    // ✅ استخدم sendMessage العادية لكل حاجة
     if (attachment) {
-      result = await sendMessageWithAttachment(content, attachment)
+      await sendMessage(content, attachment)
     } else if (typeof content === 'object' && content.type === 'audio') {
-      result = await sendMessage(content)
+      await sendMessage(content)
     } else {
-      result = await sendMessage(content)
-    }
-    if (result?.newConversationId) {
-      setSelectedConversation(result.newConversationId)
-      if (isMobile) setSidebarOpen(false)
+      await sendMessage(content)
     }
   } else {
     await sendToAdvisorOnly(content)
