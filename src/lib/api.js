@@ -67,7 +67,8 @@ export const chatApi = {
     return api.post('/Chat/send', data, {
       headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : { 'Content-Type': 'application/json' }
     })
-  },  getConversations: () => api.get('/Chat/conversations'),
+  },  
+  getConversations: () => api.get('/Chat/conversations'),
   getConversation: (id) => api.get(`/Chat/conversations/${id}`),
   deleteConversation: (id) => api.delete(`/Chat/conversations/${id}`),
   sendToAdvisor: (message) => api.post('/Chat/send-to-advisor', { message }),
@@ -85,6 +86,12 @@ export const registrationApi = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   getMyRegistrations: () => api.get('/Registration/my-registrations'),
+
+  // ✅ تم التعديل: تغيير apiClient إلى api
+  deleteRegistration: async (id) => {
+    const response = await api.delete(`/Registration/${id}`) // لاحظ تغيير المسار إلى /Registration/
+    return response.data
+  },
 }
 
 // ==================== ADVISOR API ====================
