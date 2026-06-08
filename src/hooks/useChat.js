@@ -157,6 +157,8 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
 // ✅ امسح دالة sendMessageWithAttachment خالص
 // واستخدم sendMessage العادية مع FormData
 
+// src/hooks/useChat.js - استخدم fetch بدل axios
+
 const sendMessage = async (content, attachmentFile = null) => {
   // حالة الصوت
   if (typeof content === 'object' && content.type === 'audio') {
@@ -203,7 +205,6 @@ const sendMessage = async (content, attachmentFile = null) => {
   setMessages(prev => [...prev, userMessage, typingMessage])
 
   try {
-    // ✅ استخدم FormData زي ما اشتغل في Console بالضبط
     const formData = new FormData()
     formData.append('Message', content || '')
     formData.append('ConversationId', conversationId || '')
@@ -212,9 +213,21 @@ const sendMessage = async (content, attachmentFile = null) => {
       formData.append('Attachment', attachmentFile)
     }
 
-    // ✅ استخدم نفس الدالة اللي اشتغلت
-    const res = await chatApi.sendMessage(formData)
-    const data = res.data
+    // ✅ استخدم fetch بدل axios
+    const token = localStorage.getItem('token')
+    const response = await fetch('/api/Chat/send', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to send message')
+    }
 
     let aiContent = null
     let aiSender = 'assistant'
@@ -252,8 +265,6 @@ const sendMessage = async (content, attachmentFile = null) => {
     }
   } catch (error) {
     console.error('Send message error:', error)
-    console.log('Error response:', error.response?.data)
-    
     setMessages(prev => {
       const filtered = prev.filter(msg => !msg.isTyping)
       return [...filtered, {
@@ -264,7 +275,7 @@ const sendMessage = async (content, attachmentFile = null) => {
         isError: true
       }]
     })
-    toast.error(error.response?.data?.message || 'Failed to send message')
+    toast.error(error.message || 'Failed to send message')
   } finally {
     setIsSending(false)
     setLoading(false)
