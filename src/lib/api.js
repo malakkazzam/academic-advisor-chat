@@ -87,11 +87,7 @@ export const registrationApi = {
   }),
   getMyRegistrations: () => api.get('/Registration/my-registrations'),
 
-  // ✅ تم التعديل: تغيير apiClient إلى api
-  deleteRegistration: async (id) => {
-    const response = await api.delete(`/Registration/${id}`) // لاحظ تغيير المسار إلى /Registration/
-    return response.data
-  },
+ 
 }
 
 // ==================== ADVISOR API ====================

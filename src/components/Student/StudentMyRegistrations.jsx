@@ -2,14 +2,12 @@
 import useSWR from 'swr'
 import { registrationApi } from '../../lib/api'
 import { toast } from 'sonner'
-import { Loader2, FileText, Download, CheckCircle, XCircle, Clock, Trash2 } from 'lucide-react'
+import { Loader2, FileText, Download, CheckCircle, XCircle, Clock } from 'lucide-react'
 import { useState } from 'react'
 
 const StudentMyRegistrations = () => {
-  const { data, isLoading, error, mutate } = useSWR('my-registrations', registrationApi.getMyRegistrations)
+  const { data, isLoading, error } = useSWR('my-registrations', registrationApi.getMyRegistrations)
   const [downloading, setDownloading] = useState(null)
-  const [deletingId, setDeletingId] = useState(null)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(null)
 
   // استخراج البيانات بأمان
   const registrations = Array.isArray(data) ? data : (data?.data ? (Array.isArray(data.data) ? data.data : []) : [])
@@ -58,22 +56,6 @@ const StudentMyRegistrations = () => {
     }
   }
 
-  const handleDelete = async (id) => {
-    setDeletingId(id)
-    try {
-      await registrationApi.deleteRegistration(id)
-      toast.success('Registration deleted successfully')
-      // تحديث القائمة بعد الحذف
-      mutate()
-    } catch (err) {
-      console.error('Delete error:', err)
-      toast.error(err.response?.data?.message || 'Failed to delete registration')
-    } finally {
-      setDeletingId(null)
-      setShowDeleteConfirm(null)
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -91,137 +73,82 @@ const StudentMyRegistrations = () => {
   }
 
   return (
-    <>
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">My Registrations</h1>
-        <p className="text-gray-500 mb-6">View all your submitted registration forms and their status</p>
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-800 mb-2">My Registrations</h1>
+      <p className="text-gray-500 mb-6">View all your submitted registration forms and their status</p>
 
-        {registrations.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-10 text-center">
-            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">You haven't submitted any registration forms yet.</p>
-            <button
-              onClick={() => window.location.href = '/student/submit-form'}
-              className="mt-4 text-purple-600 hover:text-purple-700 font-medium"
-            >
-              Submit a new registration →
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {registrations.map((form) => {
-              const status = getStatusBadge(form.status)
-              const StatusIcon = status.icon
-              const fileUrl = form.fileUrl || form.file_url || form.attachmentUrl || form.filePath
-              const fileName = form.fileName || form.originalFileName || 'document'
-              // منع الحذف إذا كان الطلب مقبولاً أو مرفوضاً
-              const canDelete = form.status?.toLowerCase() === 'pending'
+      {registrations.length === 0 ? (
+        <div className="bg-white rounded-xl shadow-sm p-10 text-center">
+          <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500">You haven't submitted any registration forms yet.</p>
+          <button
+            onClick={() => window.location.href = '/student/submit-form'}
+            className="mt-4 text-purple-600 hover:text-purple-700 font-medium"
+          >
+            Submit a new registration →
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {registrations.map((form) => {
+            const status = getStatusBadge(form.status)
+            const StatusIcon = status.icon
+            const fileUrl = form.fileUrl || form.file_url || form.attachmentUrl || form.filePath
+            const fileName = form.fileName || form.originalFileName || 'document'
 
-              return (
-                <div key={form.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition">
-                  <div className="p-5">
-                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3 className="font-semibold text-lg text-gray-800">
-                            Level {form.academicLevel} Registration
-                          </h3>
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.text} flex items-center gap-1`}>
-                            <StatusIcon className="h-3 w-3" />
-                            {status.label}
-                          </span>
-                        </div>
-                        <p className="text-gray-500 text-sm mt-1">
-                          Submitted: {form.submittedAt ? new Date(form.submittedAt).toLocaleDateString() : 'Unknown'}
+            return (
+              <div key={form.id} className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden hover:shadow-lg transition">
+                <div className="p-5">
+                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-lg text-gray-800">
+                          Level {form.academicLevel} Registration
+                        </h3>
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.bg} ${status.text} flex items-center gap-1`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {status.label}
+                        </span>
+                      </div>
+                      <p className="text-gray-500 text-sm mt-1">
+                        Submitted: {form.submittedAt ? new Date(form.submittedAt).toLocaleDateString() : 'Unknown'}
+                      </p>
+                      {form.notes && (
+                        <p className="text-gray-600 text-sm mt-2 bg-gray-50 p-2 rounded">
+                          <span className="font-medium">Notes:</span> {form.notes}
                         </p>
-                        {form.notes && (
-                          <p className="text-gray-600 text-sm mt-2 bg-gray-50 p-2 rounded">
-                            <span className="font-medium">Notes:</span> {form.notes}
-                          </p>
-                        )}
-                        {form.advisorResponse && (
-                          <p className="text-purple-600 text-sm mt-2">
-                            <span className="font-medium">Advisor response:</span> {form.advisorResponse}
-                          </p>
-                        )}
-                      </div>
+                      )}
+                      {form.advisorResponse && (
+                        <p className="text-purple-600 text-sm mt-2">
+                          <span className="font-medium">Advisor response:</span> {form.advisorResponse}
+                        </p>
+                      )}
+                    </div>
 
-                      <div className="flex gap-2">
-                        {fileUrl && (
-                          <button
-                            onClick={() => handleDownload(fileUrl, fileName)}
-                            disabled={downloading === fileUrl}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-purple-600 transition text-sm"
-                          >
-                            {downloading === fileUrl ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Download className="h-4 w-4" />
-                            )}
-                            Download
-                          </button>
-                        )}
-                        
-                        {/* زر الحذف - يظهر فقط للطلبات المعلقة */}
-                        {canDelete && (
-                          <button
-                            onClick={() => setShowDeleteConfirm(form.id)}
-                            disabled={deletingId === form.id}
-                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-red-50 hover:bg-red-100 rounded-lg text-red-600 transition text-sm"
-                          >
-                            {deletingId === form.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                            Delete
-                          </button>
-                        )}
-                      </div>
+                    <div className="flex gap-2">
+                      {fileUrl && (
+                        <button
+                          onClick={() => handleDownload(fileUrl, fileName)}
+                          disabled={downloading === fileUrl}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 rounded-lg text-purple-600 transition text-sm"
+                        >
+                          {downloading === fileUrl ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                          Download
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* نافذة تأكيد الحذف */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
-            <div className="p-6">
-              <div className="flex items-center justify-center mb-4">
-                <div className="bg-red-100 rounded-full p-3">
-                  <Trash2 className="h-6 w-6 text-red-600" />
-                </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
-                Delete Registration
-              </h3>
-              <p className="text-gray-500 text-center mb-6">
-                Are you sure you want to delete this registration? This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDeleteConfirm(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDelete(showDeleteConfirm)}
-                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-white transition"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          </div>
+            )
+          })}
         </div>
       )}
-    </>
+    </div>
   )
 }
 
