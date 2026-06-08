@@ -21,7 +21,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ✅ Response interceptor – معالجة الأخطاء
+// ✅ Response interceptor – من غير أي logout تلقائي
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -31,21 +31,11 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
     
-    // معالجة 401 - Unauthorized
+    // ✅ 401 - طنش خالص، متعملش logout ولا redirect
     if (error.response?.status === 401) {
-      const { token, logout } = useAuthStore.getState()
-      const currentPath = window.location.pathname
-      
-      // لو فيه توكن ولسنا في صفحة login
-      if (token && !currentPath.includes('/login')) {
-        console.warn('401 Unauthorized - logging out')
-        logout()
-        
-        // تجنب الـ reload المتكرر
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login'
-        }
-      }
+      console.warn('401 Unauthorized - auto-logout disabled, ignoring')
+      // متعملش حاجة خالص، بس ارجع الخطأ
+      return Promise.reject(error)
     }
     
     return Promise.reject(error)
