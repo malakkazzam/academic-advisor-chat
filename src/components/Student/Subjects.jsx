@@ -1,5 +1,5 @@
 // src/components/Student/Subjects.jsx
-import { useState } from 'react'
+import { useState , useEffect} from 'react'
 import { Code, Laptop, Globe, Layers, X, ZoomIn } from 'lucide-react'
 
 // استيراد الصور
@@ -44,6 +44,23 @@ const Subjects = () => {
     setSelectedImage(null)
     setSelectedTitle(null)
   }
+
+
+  useEffect(() => {
+  const handleEsc = (e) => {
+    if (e.key === 'Escape') {
+      closeModal()
+    }
+  }
+  
+  if (selectedImage) {
+    window.addEventListener('keydown', handleEsc)
+  }
+  
+  return () => {
+    window.removeEventListener('keydown', handleEsc)
+  }
+}, [selectedImage])
 
   return (
     <>
