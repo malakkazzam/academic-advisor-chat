@@ -1,3 +1,4 @@
+// src/hooks/useChat.js - النسخة الأصلية اللي كانت شغالة
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { chatApi } from '../lib/api'
 import { toast } from 'sonner'
@@ -11,10 +12,6 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
   const abortControllerRef = useRef(null)
   const isMounted = useRef(true)
 
-  // ✅ جديد - للبحث
-  const [searchResults, setSearchResults] = useState([])
-  const [searching, setSearching] = useState(false)
-
   // eslint-disable-next-line no-unused-vars
   const [pinnedConversations, setPinnedConversations] = useState(() => {
     try {
@@ -25,23 +22,21 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
     }
   })
 
- // في useChat.js، قم بتعديل fetchConversations بحيث لا تصفي حسب chatType
-const fetchConversations = useCallback(async () => {
-  if (isFetchingRef.current) return
-  isFetchingRef.current = true
-  if (abortControllerRef.current) abortControllerRef.current.abort()
-  abortControllerRef.current = new AbortController()
-  try {
-    const res = await chatApi.getConversations({ signal: abortControllerRef.current.signal })
-    let all = Array.isArray(res.data) ? res.data : (res.data?.data || [])
-    // ✅ لا نقوم بتصفية هنا، نترك التصفية لـ ChatContainer
-    setConversations(all)
-  } catch {
-    setConversations([])
-  } finally {
-    isFetchingRef.current = false
-  }
-}, []) // ✅ إزالة الاعتماد على chatType
+  const fetchConversations = useCallback(async () => {
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
+    if (abortControllerRef.current) abortControllerRef.current.abort()
+    abortControllerRef.current = new AbortController()
+    try {
+      const res = await chatApi.getConversations({ signal: abortControllerRef.current.signal })
+      let all = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+      setConversations(all)
+    } catch {
+      setConversations([])
+    } finally {
+      isFetchingRef.current = false
+    }
+  }, [])
 
   const fetchMessages = useCallback(async (id) => {
     if (!id) return
@@ -99,72 +94,22 @@ const fetchConversations = useCallback(async () => {
     setMessages([])
   }, [conversationId])
 
-  // ✅ جديد - أرشفة محادثة
-  const archiveConversation = useCallback(async (id) => {
-    try {
-      await chatApi.archiveConversation(id)
-      await fetchConversations()
-      toast.success('Conversation archived')
-    } catch (err) {
-      console.error('Archive error:', err)
-      toast.error('Failed to archive conversation')
-    }
-  }, [fetchConversations])
-
-  // ✅ جديد - تعليم رسالة كمقروءة
-  const markMessageAsRead = useCallback(async (messageId) => {
-    try {
-      await chatApi.markMessageAsRead(messageId)
-    } catch (err) {
-      console.error('Failed to mark as read:', err)
-    }
-  }, [])
-
-  // ✅ جديد - البحث في الرسائل
-  const searchMessages = useCallback(async (query) => {
-    if (!query.trim()) {
-      setSearchResults([])
-      return []
-    }
-    
-    setSearching(true)
-    try {
-      const res = await chatApi.searchMessages(query)
-      const results = res.data || []
-      setSearchResults(results)
-      return results
-    } catch (err) {
-      console.error('Search error:', err)
-      toast.error('Failed to search messages')
-      return []
-    } finally {
-      setSearching(false)
-    }
-  }, [])
-
-  // ✅ جديد - مسح نتائج البحث
-  const clearSearch = useCallback(() => {
-    setSearchResults([])
-  }, [])
-
   // إرسال رسالة إلى الـ AI
   const sendMessage = async (content) => {
-
     if (typeof content === 'object' && content.type === 'audio') {
-    const audioMessage = {
-      id: content.audioId,
-      role: 'user',
-      content: content.content,
-      timestamp: new Date().toISOString(),
-      isAudio: true,
-      audioUrl: content.audioUrl
+      const audioMessage = {
+        id: content.audioId,
+        role: 'user',
+        content: content.content,
+        timestamp: new Date().toISOString(),
+        isAudio: true,
+        audioUrl: content.audioUrl
+      }
+      setMessages(prev => [...prev, audioMessage])
+      setIsSending(false)
+      setLoading(false)
+      return
     }
-    setMessages(prev => [...prev, audioMessage])
-    setIsSending(false)
-    setLoading(false)
-    return
-  }
-
 
     if (!content.trim() || isSending) return
 
@@ -248,7 +193,7 @@ const fetchConversations = useCallback(async () => {
     }
   }
 
-  // ✅ إرسال رسالة إلى المستشار الأكاديمي (نتجاهل رد الـ Backend)
+  // إرسال رسالة إلى المستشار الأكاديمي
   const sendToAdvisorOnly = async (content) => {
     if (!content.trim() || isSending) return
 
@@ -267,10 +212,8 @@ const fetchConversations = useCallback(async () => {
 
     try {
       const res = await chatApi.sendToAdvisor(content)
-      // ✅ نتجاهل الرد القادم من الـ API تماماً (حتى لو كان رداً تجريبياً)
       console.log('API response (ignored):', res.data)
       
-      // نضيف رسالة تأكيد بسيطة من الـ Frontend
       setMessages(prev => [...prev, {
         id: `advisor-confirm-${Date.now()}`,
         role: 'assistant',
@@ -290,6 +233,7 @@ const fetchConversations = useCallback(async () => {
     }
   }
 
+  // ✅ الـ useEffect اللي كان شغال - رجعته زي ما كان
   useEffect(() => {
     isMounted.current = true
     const timeoutId = setTimeout(() => {
@@ -328,13 +272,6 @@ const fetchConversations = useCallback(async () => {
     pinConversation,
     unpinConversation,
     isConversationPinned,
-    pinnedConversations,
-    // ✅ الحاجات الجديدة
-    searchMessages,
-    clearSearch,
-    searchResults,
-    searching,
-    archiveConversation,
-    markMessageAsRead
+    pinnedConversations
   }
 }

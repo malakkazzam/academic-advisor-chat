@@ -8,39 +8,31 @@ const api = axios.create({
   timeout: 30000,
 })
 
-// Request interceptor – إضافة التوكن
 api.interceptors.response.use(
   (response) => response,
   (error) => {
+    // ✅ معالجة 429 من غير reload
+    if (error.response?.status === 429) {
+      console.warn('Rate limit (429) - request ignored')
+      return Promise.reject(error)
+    }
+    
+    // ✅ معالجة 401 - مرة واحدة بس
     if (error.response?.status === 401) {
-      // ✅ منع الـ reload المتكرر
       const token = localStorage.getItem('token')
-      if (token) {
+      const currentPath = window.location.pathname
+      
+      if (token && !currentPath.includes('/login')) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        // ✅ استخدم React Router بدل window.location
-        // لكن لو مضطر تستخدمها، اعملها مرة واحدة بس
-        if (!window.location.pathname.includes('/login')) {
-          window.location.href = '/login'
-        }
+        window.location.href = '/login'
       }
     }
+    
     return Promise.reject(error)
   }
 )
 
-// Response interceptor – التعامل مع 401
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  }
-)
 
 // ==================== AUTH API ====================
 export const authApi = {
