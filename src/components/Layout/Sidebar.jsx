@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Mail,
   Activity,
+   BookMarked,
 } from 'lucide-react'
 
 const Sidebar = ({ isOpen, onClose }) => {
@@ -25,6 +26,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     { to: '/student/submit-form', icon: FileText, label: 'Submit Form', color: 'text-green-500' },
     { to: '/student/choose-advisor', icon: UserCheck, label: 'Choose Advisor', color: 'text-orange-500' },
       { to: '/student/my-registrations', icon: FileCheck, label: 'My Registrations', color: 'text-indigo-500' }, 
+          { to: '/student/subjects', icon: BookMarked, label: 'Subjects', color: 'text-emerald-500' }, 
   ]
 
   const advisorLinks = [
