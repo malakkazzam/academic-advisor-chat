@@ -103,8 +103,8 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
       await chatApi.archiveConversation(id)
       await fetchConversations()
       toast.success('Conversation archived')
-    } catch (err) {
-      console.error('Archive error:', err)
+    } catch (error) {
+      console.error('Archive error:', error)
       toast.error('Failed to archive conversation')
     }
   }, [fetchConversations])
@@ -113,8 +113,8 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
   const markMessageAsRead = useCallback(async (messageId) => {
     try {
       await chatApi.markMessageAsRead(messageId)
-    } catch (err) {
-      console.error('Failed to mark as read:', err)
+    } catch (error) {
+      console.error('Failed to mark as read:', error)
     }
   }, [])
 
@@ -131,8 +131,8 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
       const results = res.data || []
       setSearchResults(results)
       return results
-    } catch (err) {
-      console.error('Search error:', err)
+    } catch (error) {
+      console.error('Search error:', error)
       toast.error('Failed to search messages')
       return []
     } finally {
@@ -145,7 +145,7 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
     setSearchResults([])
   }, [])
 
-  // ✅ إرسال رسالة إلى الـ AI (باستخدام fetch)
+  // ✅ إرسال رسالة إلى الـ AI (باستخدام fetch مع معالجة أفضل للرد)
   const sendMessage = async (content, attachmentFile = null) => {
     // حالة الصوت
     if (typeof content === 'object' && content.type === 'audio') {
@@ -200,7 +200,6 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
         formData.append('Attachment', attachmentFile)
       }
 
-      // ✅ استخدم fetch بدل axios (زي ما اشتغل في الاختبار)
       const token = localStorage.getItem('token')
       const response = await fetch('/api/Chat/send', {
         method: 'POST',
@@ -210,10 +209,26 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
         body: formData
       })
 
-      const data = await response.json()
+      // معالجة الرد بشكل آمن
+      let data = null
+      let responseText = null
+      
+      try {
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          data = await response.json()
+        } else {
+          responseText = await response.text()
+          console.log('Response text:', responseText)
+        }
+      } catch {
+        responseText = await response.text()
+        console.warn('Could not parse response as JSON:', responseText)
+      }
 
       if (!response.ok) {
-        throw new Error(data.message || 'Failed to send message')
+        const errorMsg = data?.message || responseText || `فشل الإرسال (${response.status})`
+        throw new Error(errorMsg)
       }
 
       let aiContent = null
@@ -231,6 +246,8 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
         } else if (data.response) {
           aiContent = data.response
         }
+      } else if (responseText && response.ok) {
+        aiContent = "✓ Your message has been sent successfully."
       }
 
       setMessages(prev => {
@@ -257,7 +274,7 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
         return [...filtered, {
           id: `error-${Date.now()}`,
           role: 'assistant',
-          content: '⚠️ Sorry, I encountered an error. Please try again later.',
+          content: error.message || '⚠️ Sorry, I encountered an error. Please try again later.',
           timestamp: new Date().toISOString(),
           isError: true
         }]
@@ -299,8 +316,8 @@ export const useChat = (conversationId = null, chatType = 'ai') => {
       }])
       
       setTimeout(() => fetchConversations(), 500)
-    } catch (err) {
-      console.error('Send to advisor error:', err)
+    } catch (error) {
+      console.error('Send to advisor error:', error)
       toast.error('Failed to send message to advisor')
       setMessages(prev => prev.filter(msg => msg.id !== userMessage.id))
     } finally {
